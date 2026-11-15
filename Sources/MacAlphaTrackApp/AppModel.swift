@@ -25,14 +25,6 @@ final class AppModel: ObservableObject {
     var isBundled: Bool { Bundle.main.bundleURL.pathExtension == "app" }
     var liveSourceAvailable: Bool { liveSource != nil }
 
-    var menuBarSymbol: String {
-        switch state {
-        case .connected: return "slider.vertical.3"
-        case .waitingForDevice: return "powerplug"
-        case .stopped: return "pause.circle"
-        }
-    }
-
     var statusText: String {
         switch state {
         case .connected: return "AlphaTrack connected"
@@ -72,10 +64,28 @@ final class AppModel: ObservableObject {
 
     func clearLog() { logLines = [] }
 
-    func quit() {
-        service.stop()
-        NSApp.terminate(nil)
+    /// Show the main (settings) window and bring the app forward.
+    func showMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        // SwiftUI's Settings scene is opened through the app menu's "Settings…" item.
+        // Sending showSettingsWindow: directly stopped working on recent macOS, so
+        // find that item and perform it; fall back to the selector.
+        let appMenu = NSApp.mainMenu?.items.first?.submenu
+        if let item = appMenu?.items.first(where: { $0.keyEquivalent == "," && $0.keyEquivalentModifierMask == .command }),
+           let action = item.action {
+            NSLog("MacAlphaTrack: opening window via menu item '%@' (%@)", item.title, NSStringFromSelector(action))
+            NSApp.sendAction(action, to: item.target, from: item)
+        } else {
+            NSLog("MacAlphaTrack: no Settings menu item found in %@; using selector",
+                  (appMenu?.items.map { "\($0.title):\($0.action.map(NSStringFromSelector) ?? "-")" } ?? []).joined(separator: ", "))
+            NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        }
     }
+
+    func quit() { NSApp.terminate(nil) }
+
+    /// Called on termination: blank the unit and release it.
+    func stopForQuit() { service.stop() }
 
     // MARK: Live script
 

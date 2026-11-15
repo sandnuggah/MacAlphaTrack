@@ -34,7 +34,7 @@ Roadmap (see `docs/PROTOCOL.md` and `TODO.md`):
 ## Command line
 
 ```sh
-swift build -c release
+swift build --build-system native -c release
 .build/release/macalphatrack run            # headless driver; --verbose logs every MIDI message
 ```
 
@@ -86,9 +86,11 @@ against a mock of Live's API.
 ## Building
 
 ```sh
-swift build
-swift test
-swift run macalphatrack
+swift build --build-system native
+swift test  --build-system native
+swift run   --build-system native macalphatrack
 ```
 
-Requires macOS 13+ and Xcode command line tools.
+Requires macOS 13+ and Xcode. The `--build-system native` flag matters: the default
+SwiftPM build system in current toolchains intermittently drops object files from the
+link and fails on newly added files; the classic one is dependable.

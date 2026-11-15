@@ -26,9 +26,10 @@
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it.
 - [x] Menu bar app wrapper (SwiftUI MenuBarExtra), `Scripts/make-app.sh` builds the bundle.
-- [ ] App icon; Developer ID signing + notarization for distribution.
-- [ ] Debug `swift build` sometimes fails at link right after a source change and succeeds on rerun
-      (release and `make-app.sh` are unaffected). Probably the new SwiftPM build system; investigate.
+- [ ] Custom icons: app icon and a menu bar template icon (currently SF Symbol slider.vertical.3).
+- [ ] Developer ID signing + notarization for distribution.
+- [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
+      new files tripping the dependency scanner). Everything uses `--build-system native` now.
 - [ ] Live script installer: detect a custom User Library location from Live's preferences instead of asking.
 
 ## Ableton Live script (`LiveRemoteScript/`)

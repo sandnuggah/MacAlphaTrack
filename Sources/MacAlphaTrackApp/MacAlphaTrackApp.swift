@@ -3,24 +3,14 @@ import AlphaTrackDriver
 
 @main
 struct MacAlphaTrackApp: App {
-    @StateObject private var model = AppModel()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        MenuBarExtra {
-            MenuPanelView()
-                .environmentObject(model)
-        } label: {
-            Image(systemName: model.menuBarSymbol)
-        }
-        .menuBarExtraStyle(.window)
-
-        // Also opened by `open macalphatrack://main`.
-        Window("MacAlphaTrack", id: MainWindow.id) {
+        // The only SwiftUI scene is the settings window, so nothing opens at launch;
+        // the menu bar item is an AppKit NSStatusItem (see StatusItemController).
+        Settings {
             MainWindow()
-                .environmentObject(model)
+                .environmentObject(delegate.model)
         }
-        .windowResizability(.contentSize)
-        .defaultPosition(.center)
-        .handlesExternalEvents(matching: [MainWindow.id])
     }
 }

@@ -5,8 +5,10 @@ set -e
 CONFIG="${1:-release}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
-swift build -c "$CONFIG" --product MacAlphaTrack
-BIN="$(swift build -c "$CONFIG" --show-bin-path)/MacAlphaTrack"
+# The default (swiftbuild) build system intermittently drops objects from the link and
+# trips on new files; the classic one is dependable.
+swift build --build-system native -c "$CONFIG" --product MacAlphaTrack
+BIN="$(swift build --build-system native -c "$CONFIG" --show-bin-path)/MacAlphaTrack"
 APP="$ROOT/build/MacAlphaTrack.app"
 VERSION="$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo 0.1.0)"
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
