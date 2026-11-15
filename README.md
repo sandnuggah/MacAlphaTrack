@@ -62,6 +62,11 @@ records the deployment target as the SDK version, and AppKit only gives an app t
 current window design (Liquid Glass chrome and window controls) when the recorded SDK
 is macOS 26 or newer. Without the stamp the app runs in pre-26 compatibility mode.
 
+The app icon is an Icon Composer package, `Design/icons/AppIcon.icon` (flat SVG layers
+plus `icon.json`), compiled by `actool` during bundling so macOS renders it as Liquid
+Glass; the menu bar glyph is `Design/icons/menubar-fader.svg`. Open the package in Icon
+Composer (bundled with Xcode) to tweak it.
+
 Copy it to /Applications to keep it. The app and the `macalphatrack` CLI share the
 `AlphaTrackDriver` library; run only one of them at a time, since the unit can be opened
 by a single process.

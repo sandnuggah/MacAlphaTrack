@@ -24,6 +24,18 @@ cp "$BIN" "$APP/Contents/MacOS/MacAlphaTrack"
 xcrun vtool -set-build-version macos "$MIN_OS" "$SDK_VERSION" -replace \
   -output "$APP/Contents/MacOS/MacAlphaTrack" "$APP/Contents/MacOS/MacAlphaTrack"
 cp "$ROOT"/LiveRemoteScript/AlphaTrack/*.py "$APP/Contents/Resources/LiveRemoteScript/AlphaTrack/"
+
+# App icon: compile the Icon Composer package (layered Liquid Glass icon) into Assets.car,
+# which also yields AppIcon.icns for older systems, plus the Info.plist keys it needs.
+ICON_PLIST="$(mktemp -t macalphatrack-icon).plist"
+xcrun actool "$ROOT/Design/icons/AppIcon.icon" --compile "$APP/Contents/Resources" \
+  --app-icon AppIcon --platform macosx --minimum-deployment-target "$MIN_OS" \
+  --output-partial-info-plist "$ICON_PLIST" --output-format human-readable-text >/dev/null
+ICON_NAME="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "$ICON_PLIST")"
+ICON_FILE="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconFile' "$ICON_PLIST")"
+rm -f "$ICON_PLIST"
+# Menu bar template glyph (1x/2x), loaded by name from the bundle.
+cp "$ROOT"/Design/icons/menubar/MenuBarIcon.png "$ROOT"/Design/icons/menubar/MenuBarIcon@2x.png "$APP/Contents/Resources/"
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -33,6 +45,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundleIdentifier</key><string>com.macalphatrack.MacAlphaTrack</string>
   <key>CFBundleExecutable</key><string>MacAlphaTrack</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconName</key><string>$ICON_NAME</string>
+  <key>CFBundleIconFile</key><string>$ICON_FILE</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>

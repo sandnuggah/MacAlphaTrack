@@ -1,0 +1,58 @@
+{
+  "fill": {
+    "solid": "srgb:0.11765,0.27843,0.58039,1.00000"
+  },
+  "groups": [
+    {
+      "name": "Cap",
+      "layers": [
+        {
+          "name": "Cap",
+          "image-name": "Cap.svg",
+          "glass": true
+        }
+      ],
+      "lighting": "individual",
+      "specular": true,
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.5
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.0
+      }
+    },
+    {
+      "name": "Scale",
+      "layers": [
+        {
+          "name": "Ticks",
+          "image-name": "Ticks.svg",
+          "glass": false
+        },
+        {
+          "name": "Slot",
+          "image-name": "Slot.svg",
+          "glass": false
+        }
+      ],
+      "lighting": "individual",
+      "specular": false,
+      "shadow": {
+        "kind": "none",
+        "opacity": 0.0
+      },
+      "translucency": {
+        "enabled": false,
+        "value": 0.0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "circles": [
+      "watchOS"
+    ],
+    "squares": "shared"
+  }
+}

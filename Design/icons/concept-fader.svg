@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- MacAlphaTrack app icon, flat layers for Icon Composer. Layer order: background, ticks, slot, cap. -->
+  <defs><clipPath id="mask"><rect x="0" y="0" width="1024" height="1024" rx="230" ry="230"/></clipPath></defs>
+  <g clip-path="url(#mask)">
+    <rect id="layer-background" x="0" y="0" width="1024" height="1024" fill="#1E4794"/>
+    <g id="layer-ticks">
+      <rect x="392" y="228" width="60" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="228" width="60" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="416" y="320" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="320" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="416" y="412" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="412" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="392" y="504" width="60" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="504" width="60" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="416" y="596" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="596" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="416" y="688" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="688" width="36" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="392" y="780" width="60" height="16" rx="8" fill="#9DB4DA"/>
+      <rect x="572" y="780" width="60" height="16" rx="8" fill="#9DB4DA"/>
+    </g>
+    <g id="layer-slot">
+      <rect x="464" y="196" width="96" height="632" rx="48" fill="#1E1E1E"/>
+    </g>
+    <g id="layer-cap">
+      <rect x="362" y="324" width="300" height="192" rx="40" fill="#DDE1E6"/>
+      <rect x="362" y="412" width="300" height="16" fill="#2A6FF0"/>
+      <rect x="362" y="428" width="300" height="6" fill="#AEB5BE" opacity="0.6"/>
+    </g>
+  </g>
+</svg>

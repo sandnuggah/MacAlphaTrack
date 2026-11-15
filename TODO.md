@@ -26,7 +26,7 @@
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it.
 - [x] Menu bar app wrapper (SwiftUI MenuBarExtra), `Scripts/make-app.sh` builds the bundle.
-- [ ] Custom icons: app icon and a menu bar template icon (currently SF Symbol slider.vertical.3).
+- [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
       new files tripping the dependency scanner). Everything uses `--build-system native` now.

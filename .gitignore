@@ -6,3 +6,6 @@ DerivedData/
 .DS_Store
 *.log
 build/
+Design/icons/preview.png
+Design/icons/appicon-rendered.png
+Design/icons/menubar-preview.png

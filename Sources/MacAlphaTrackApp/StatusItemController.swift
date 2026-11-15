@@ -17,9 +17,12 @@ final class StatusItemController: NSObject {
         super.init()
 
         if let button = statusItem.button {
-            // Fixed icon regardless of state (TODO: custom icon).
-            let image = NSImage(systemSymbolName: "slider.vertical.3", accessibilityDescription: "MacAlphaTrack")
+            // Fixed template glyph regardless of device state: the bundled fader icon,
+            // or an SF Symbol when running outside the app bundle.
+            let image = Bundle.main.image(forResource: "MenuBarIcon")
+                ?? NSImage(systemSymbolName: "slider.vertical.3", accessibilityDescription: "MacAlphaTrack")
             image?.isTemplate = true
+            image?.accessibilityDescription = "MacAlphaTrack"
             button.image = image
         }
 
