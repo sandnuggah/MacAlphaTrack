@@ -70,6 +70,8 @@ final class AppModel: ObservableObject {
         DispatchQueue.global().async { [service] in service.stop() }
     }
 
+    func clearLog() { logLines = [] }
+
     func quit() {
         service.stop()
         NSApp.terminate(nil)
