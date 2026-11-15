@@ -1,33 +1,18 @@
 import SwiftUI
 import AlphaTrackDriver
 
-/// Driver log, shown as a section of the main window.
+/// Driver log, shown as a section of the main window. Uses an NSTextView: SwiftUI Text in
+/// a ScrollView drew later-appended lines upside down inside this hosted window, and a
+/// text view is the better fit for a growing log anyway.
 struct LogPane: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
         VStack(spacing: 6) {
-            ScrollViewReader { proxy in
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 2) {
-                        ForEach(Array(model.logLines.enumerated()), id: \.offset) { i, line in
-                            Text(line).font(.system(size: 11, design: .monospaced)).id(i)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(6)
-                    .textSelection(.enabled)
-                }
+            LogTextView(text: model.logLines.joined(separator: "\n"))
                 .frame(height: 180)
-                .background(Color(nsColor: .textBackgroundColor))
+                .background(Color.white.opacity(0.06))
                 .cornerRadius(6)
-                .onChange(of: model.logLines.count) { count in
-                    if count > 0 { proxy.scrollTo(count - 1, anchor: .bottom) }
-                }
-                .onAppear {
-                    if !model.logLines.isEmpty { proxy.scrollTo(model.logLines.count - 1, anchor: .bottom) }
-                }
-            }
             HStack {
                 Text("\(model.logLines.count) lines").font(.caption).foregroundStyle(.secondary)
                 Spacer()
@@ -38,6 +23,32 @@ struct LogPane: View {
                 Button("Clear") { model.clearLog() }
             }
         }
+    }
+}
+
+struct LogTextView: NSViewRepresentable {
+    let text: String
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let scroll = NSTextView.scrollableTextView()
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        let tv = scroll.documentView as! NSTextView
+        tv.isEditable = false
+        tv.isSelectable = true
+        tv.drawsBackground = false
+        tv.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        tv.textColor = .secondaryLabelColor
+        tv.textContainerInset = NSSize(width: 6, height: 6)
+        tv.isAutomaticQuoteSubstitutionEnabled = false
+        return scroll
+    }
+
+    func updateNSView(_ scroll: NSScrollView, context: Context) {
+        guard let tv = scroll.documentView as? NSTextView, tv.string != text else { return }
+        let wasAtBottom = scroll.contentView.bounds.maxY >= (tv.bounds.height - 4)
+        tv.string = text
+        if wasAtBottom || text.isEmpty { tv.scrollToEndOfDocument(nil) }
     }
 }
 
