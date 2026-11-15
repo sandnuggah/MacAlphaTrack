@@ -17,44 +17,62 @@ Two layers matter for a modern macOS driver:
 |---|---|---|
 | Vendor ID | `0x165b` (Frontier Design Group) | confirmed |
 | Product ID | `0xfad1` | confirmed |
-| Class | vendor-specific (not USB-MIDI, not HID) | confirmed (Linux driver binds generic USB) |
-| Endpoints | 1x interrupt IN, 1x interrupt OUT, wMaxPacketSize 64 | confirmed |
+| Class | vendor-specific 0xFF (not USB-MIDI, not HID), full speed, 1 configuration | confirmed |
+| Endpoints | interrupt IN 0x81, interrupt OUT 0x02, wMaxPacketSize 64, bInterval 10 | confirmed on hardware |
+| macOS notes | device is left unconfigured by the OS; the driver must call setConfiguration(1) before the interface appears. IOUSBHost rejects non-zero timeouts on interrupt pipes. | confirmed |
 | Input report | 12 bytes | confirmed |
 | Output command | 8 bytes | confirmed |
 | Driver dedupes identical consecutive input reports | yes (device re-sends state) | confirmed |
 
-### Input report (12 bytes, device -> host)
+### Input report (12 bytes, device -> host) — VERIFIED on hardware 2026-11-15
+
+The device sends a report every ~8 ms regardless of activity (so consecutive duplicates
+must be ignored). After `open` + `configure` the first report arrives after ~1.9 s and
+carries status 0x01.
 
 ```
-byte 0    : 0x00 (unknown / always zero on TranzPort)
-byte 1    : status  0x00 = normal event, 0x01 = came online, 0xff = offline
-bytes 2-5 : 32-bit button/touch bitmask, big-endian (byte2 = MSB)
-byte 6    : encoder delta ("datawheel" on TranzPort; 01-3f fwd, 41-7f back) -- WHICH encoder: unverified
-bytes 7-8 : unknown (likely other encoders and/or touch-strip position)
-bytes 9-11: fader position ("last 3 bytes are the slider position; 0x40 flag = fader moving, MSBs, 3 LSBs")
+byte 0    : 0x00
+byte 1    : status  0x00 = normal, 0x01 = came online (first report), 0xff = offline
+bytes 2-5 : 32-bit switch mask, big-endian (byte 2 = bits 31..24)
+byte 6    : fader position bits 9..2            } 10-bit position = (b6 << 2) | (b7 >> 6)
+byte 7    : fader position bits 1..0 in bits 7-6 }  0 = bottom, 1023 = top
+byte 8    : left encoder   delta since previous report, signed: +1 clockwise, -1 (0xff) counter-clockwise
+byte 9    : middle encoder delta
+byte 10   : right encoder  delta
+byte 11   : touch strip position, 0x00..0xf8 in steps of 8 -> position = byte >> 3 (0..31, left to right);
+            keeps its last value after the finger lifts
 ```
 
-Button bitmask as published in `alphatrack.h` (treat as **hints, must be verified on hardware**;
-the table was adapted from the TranzPort and has obvious duplicates):
+Switch bits (all confirmed; they match the Linux `alphatrack.h` table):
 
 ```
-PLAY        0x08000000   STOP      0x10000000   REW      0x01000000   FFWD     0x04000000
-RECORD      0x02000000   SHIFT     0x20000000   LOOP     0x00010000   FLIP     0x40000000
-TRACKLEFT   0x80000000   TRACKRIGHT 0x00020000
-TRACKREC    0x00001000   TRACKMUTE 0x00040000   TRACKSOLO 0x00800000 (same bit listed for PUNCH)
-F1 0x00100000  F2 0x00400000  F3 0x00200000  F4 0x00080000
-PAN 0x00000200  SEND 0x00000800  EQ 0x00004000 (same bit listed for "BATTERY")  PLUGIN 0x00000400  AUTO 0x00000100
-ENCODER TOUCH 1/2/3   0x00000008 / 0x00000010 / 0x00000020
-ENCODER PRESS 1/2/3   0x00000009 / 0x00008010 / 0x00002020   (press = touch bit + another bit)
-FOOTSWITCH  unknown
-TOUCH STRIP unknown
+bit 31 TRACK L   bit 30 FLIP     bit 29 SHIFT    bit 28 STOP     bit 27 PLAY
+bit 26 FFWD      bit 25 RECORD   bit 24 REW      bit 23 SOLO     bit 22 F2
+bit 21 F3        bit 20 F1       bit 19 F4       bit 18 MUTE     bit 17 TRACK R
+bit 16 LOOP      bit 15 enc M push   bit 14 EQ   bit 13 enc R push   bit 12 REC (arm)
+bit 11 SEND      bit 10 PLUG-IN  bit  9 PAN      bit  8 AUTO
+bit  6 FADER TOUCH   bit 5 enc R touch   bit 4 enc M touch   bit 3 enc L touch
+bit  2 STRIP 2 fingers   bit 1 STRIP 1 finger   bit 0 enc L push
+bit  7: never seen; presumably FOOTSWITCH (none connected during verification)
 ```
+
+Encoder push always comes with the matching touch bit (hence the old PRESS masks 0x09,
+0x8010, 0x2020).
+
+Observed quirk: the capacitive touch bits (encoders 3/4/5, fader 6) flicker heavily while
+the hand is anywhere near the unit, e.g. fader touch toggles while turning an encoder. The
+manual's touch calibration (hold SHIFT+STOP, press F4) may fix it; the driver should also
+debounce touch bits (require a few consecutive reports) before emitting touch notes.
+
+Observed quirk: the device re-enumerated (new IORegistry id) right after a full fader
+sweep; reads failed with kIOReturnNotResponding then IOUSBHost error 0x10000003 until it
+came back. The daemon must handle device removal/arrival and reopen.
 
 ### Output commands (8 bytes, host -> device)
 
 ```
-LED on/off :  00 00 nn ss 00 00 00 00      nn = light id 0..22, ss = 01 on / 00 off      confirmed
-LCD write  :  00 01 cc a0 a1 a2 a3 00      cc = cell 0..7 (4 chars each; 0-3 = top row,   confirmed
+LED on/off :  00 00 nn ss 00 00 00 00      nn = light id 0..22, ss = 01 on / 00 off      VERIFIED (all LEDs light); id->LED map unverified
+LCD write  :  00 01 cc a0 a1 a2 a3 00      cc = cell 0..7 (4 chars each; 0-3 = top row,   VERIFIED on hardware
                                            4-7 = bottom row), a = LCD char codes
 Fader move :  UNKNOWN - needs reverse engineering (TranzPort had no fader, so no prior art)
 ```
@@ -71,11 +89,10 @@ LCD special chars seen in Ardour code: `0x07` = full 4-quadrant block, `0x03` = 
 (meter/bargraph glyphs). Manual says 8 custom chars exist; the character map image did not
 survive text extraction - check the PDF page 8 for the table.
 
-### Open questions (need the unit plugged in)
+### Open questions
 
-- Exact bit for every button; footswitch bit; FLIP/F-keys; which bits are encoder touch vs press.
-- Byte layout of the 3 encoder deltas and the touch strip (2 touch flags + 0..31 position).
-- Fader position encoding (10-bit per the MIDI layer) in bytes 9-11, and the fader-touch bit.
+- Footswitch bit (presumably 7).
+- Which physical LED each light id 0..22 drives.
 - Fader motor output command. Candidates to try: `00 02 hi lo ...`, `00 03 ...`. Risk: wrong
   commands are harmless (device ignores) but we should avoid flooding the motor.
 - Does the device need an "init" command before it reports? (Linux driver sends none; it just

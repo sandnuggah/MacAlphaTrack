@@ -15,7 +15,8 @@ let package = Package(
         // The daemon / CLI: USB transport (IOUSBHost), CoreMIDI virtual ports, subcommands.
         .executableTarget(
             name: "macalphatrack",
-            dependencies: ["AlphaTrackKit"]
+            dependencies: ["AlphaTrackKit"],
+            linkerSettings: [.linkedFramework("IOUSBHost"), .linkedFramework("IOKit"), .linkedFramework("CoreMIDI")]
         ),
         .testTarget(
             name: "AlphaTrackKitTests",

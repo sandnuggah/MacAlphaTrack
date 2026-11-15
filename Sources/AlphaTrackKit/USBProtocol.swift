@@ -94,3 +94,11 @@ public enum AlphaTrackUSB {
         }
     }
 }
+
+extension AlphaTrackUSB {
+    /// Bytes 2-5 of an input report as a big-endian 32-bit button/touch mask.
+    public static func buttonMask(of report: [UInt8]) -> UInt32 {
+        guard report.count >= 6 else { return 0 }
+        return UInt32(report[2]) << 24 | UInt32(report[3]) << 16 | UInt32(report[4]) << 8 | UInt32(report[5])
+    }
+}
