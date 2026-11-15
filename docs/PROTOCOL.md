@@ -71,18 +71,20 @@ came back. The daemon must handle device removal/arrival and reopen.
 ### Output commands (8 bytes, host -> device)
 
 ```
-LED on/off :  00 00 nn ss 00 00 00 00      nn = light id 0..22, ss = 01 on / 00 off      VERIFIED (all LEDs light); id->LED map unverified
+LED on/off :  00 00 nn ss 00 00 00 00      nn = light id 0..22, ss = 01 on / 00 off      VERIFIED, including the id -> LED map
 LCD write  :  00 01 cc a0 a1 a2 a3 00      cc = cell 0..7 (4 chars each; 0-3 = top row,   VERIFIED on hardware
                                            4-7 = bottom row), a = LCD char codes
-Fader move :  UNKNOWN - needs reverse engineering (TranzPort had no fader, so no prior art)
+Fader move :  00 02 pp qq 00 00 00 00      pp = position bits 9..2, qq = bits 1..0 << 6      VERIFIED 2026-11-15 (pp); qq assumed to mirror the input report
+              The device does NOT echo motor-driven positions in its reports; bytes 6-7 only
+              change when a hand moves the fader (and read 0 after a reset until then).
 ```
 
-Light ids (`enum LightID`, confirmed by Ardour lightmap):
+Light ids — VERIFIED on hardware 2026-11-15 (ids 7 and 8 drive no LED):
 
 ```
- 0 EQ        1 OUT(TrackR?)  2 F2     3 SEND    4 IN(TrackL?)  5 F1    6 PAN    7 ?    8 ?
- 9 SHIFT    10 MUTE         11 SOLO  12 REC(arm) 13 READ      14 WRITE 15 ANYSOLO
-16 AUTO     17 F4           18 RECORD 19 WINDOW? 20 PLUGIN     21 F3    22 LOOP
+ 0 EQ        1 TRACK R   2 F2     3 SEND    4 TRACK L   5 F1    6 PAN    7 (none) 8 (none)
+ 9 SHIFT    10 MUTE     11 SOLO  12 REC(arm) 13 AUTO READ  14 AUTO WRITE  15 ANY SOLO
+16 AUTO     17 F4       18 RECORD  19 FLIP   20 PLUG-IN  21 F3    22 LOOP
 ```
 
 LCD special chars seen in Ardour code: `0x07` = full 4-quadrant block, `0x03` = left-half block
@@ -92,7 +94,6 @@ survive text extraction - check the PDF page 8 for the table.
 ### Open questions
 
 - Footswitch bit (presumably 7).
-- Which physical LED each light id 0..22 drives.
 - Fader motor output command. Candidates to try: `00 02 hi lo ...`, `00 03 ...`. Risk: wrong
   commands are harmless (device ignores) but we should avoid flooding the motor.
 - Does the device need an "init" command before it reports? (Linux driver sends none; it just

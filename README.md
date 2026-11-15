@@ -15,8 +15,8 @@ unit (buttons, encoders, fader, touch strip, LEDs, LCD); see `docs/PROTOCOL.md` 
 `macalphatrack run` is a working driver: it publishes a virtual CoreMIDI source and
 destination named **AlphaTrack** that speak the documented Native-mode protocol, so
 anything written for Frontier's original driver should work unchanged. Buttons, encoders,
-fader position and touch strip go out; LEDs and LCD text come in. Not yet: fader motor
-(command unknown), footswitch (unverified bit).
+fader position and touch strip go out; LEDs, LCD text and fader motor position come in.
+Not yet: footswitch (unverified bit).
 
 Roadmap (see `docs/PROTOCOL.md` and `TODO.md`):
 

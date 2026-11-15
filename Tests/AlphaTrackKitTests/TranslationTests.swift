@@ -89,7 +89,17 @@ final class DeviceStateTests: XCTestCase {
     func testInquiryAndUnsupported() {
         var s = DeviceState()
         XCTAssertEqual(s.apply(midi: NativeMIDI.deviceInquiry).midiReply, NativeMIDI.deviceInquiryReply)
-        XCTAssertNotNil(s.apply(midi: [0xe0, 0x00, 0x40]).unsupported)
+        XCTAssertNil(s.apply(midi: [0xe0, 0x00, 0x40]).unsupported)
+    }
+
+    func testFaderPitchBendMovesMotor() {
+        var s = DeviceState()
+        // 512 = e0 00 40 -> pp = 0x80, qq = 0
+        XCTAssertEqual(s.apply(midi: [0xe0, 0x00, 0x40]).usbCommands, [[0x00, 0x02, 0x80, 0x00, 0, 0, 0, 0]])
+        // 1023 = e0 70 7f -> pp = 0xff, qq = 0xc0
+        XCTAssertEqual(s.apply(midi: [0xe0, 0x70, 0x7f]).usbCommands, [[0x00, 0x02, 0xff, 0xc0, 0, 0, 0, 0]])
+        XCTAssertEqual(s.faderPosition, 1023)
+        XCTAssertTrue(s.restoreCommands().contains([0x00, 0x02, 0xff, 0xc0, 0, 0, 0, 0]))
         XCTAssertEqual(s.apply(midi: NativeMIDI.forceNativeMode).usbCommands, [])
     }
 
@@ -97,7 +107,7 @@ final class DeviceStateTests: XCTestCase {
         var s = DeviceState()
         _ = s.apply(midi: [0x90, 0x46, 0x7f]) // shift LED
         let restore = s.restoreCommands()
-        XCTAssertEqual(restore.count, 23 + 8)
+        XCTAssertEqual(restore.count, 23 + 8) // no fader command until the host has set a position
         XCTAssertTrue(restore.contains([0, 0, 9, 1, 0, 0, 0, 0]))
         XCTAssertTrue(DeviceState.clearCommands().allSatisfy { $0[1] == 1 || $0[3] == 0 })
     }

@@ -1,17 +1,15 @@
 import Foundation
 
 extension AlphaTrackUSB.Light {
-    /// Which light a Native-mode LED note drives. Ids 1, 4 and 19 are the TranzPort-named
-    /// OUT/IN/WINDOW entries of the Linux enum and are the best guesses for TRACK R,
-    /// TRACK L and FLIP; verify with `macalphatrack lights`.
+    /// Which light a Native-mode LED note drives (all verified on hardware).
     public init?(note: NativeMIDI.Note) {
         switch note {
         case .record: self = .record
         case .shift: self = .shift
-        case .trackLeft: self = .in
-        case .trackRight: self = .out
+        case .trackLeft: self = .trackLeft
+        case .trackRight: self = .trackRight
         case .loop: self = .loop
-        case .flip: self = .window
+        case .flip: self = .flip
         case .mute: self = .mute
         case .solo: self = .solo
         case .recArm: self = .recArm
@@ -37,6 +35,8 @@ extension AlphaTrackUSB.Light {
 public struct DeviceState: Equatable {
     public private(set) var lights: Set<AlphaTrackUSB.Light> = []
     public private(set) var lcd: [UInt8] = Array(repeating: 0x20, count: AlphaTrackUSB.lcdColumns * AlphaTrackUSB.lcdRows)
+    /// Last fader position commanded by the host, if any.
+    public private(set) var faderPosition: UInt16? = nil
 
     public init() {}
 
@@ -45,7 +45,7 @@ public struct DeviceState: Equatable {
         public var usbCommands: [[UInt8]] = []
         /// A reply the host must send back on the MIDI source (device inquiry).
         public var midiReply: [UInt8]? = nil
-        /// Messages we recognise but cannot act on yet (fader motor).
+        /// Messages we recognise but cannot act on.
         public var unsupported: String? = nil
     }
 
@@ -60,7 +60,10 @@ public struct DeviceState: Equatable {
             if on { lights.insert(light) } else { lights.remove(light) }
             result.usbCommands = [AlphaTrackUSB.lightCommand(light, on: on)]
         case NativeMIDI.faderPitchBend where message.count == 3:
-            result.unsupported = "fader motor command not yet known"
+            if let pos = NativeMIDI.faderPosition(from: message) {
+                faderPosition = pos
+                result.usbCommands = [AlphaTrackUSB.faderCommand(position: pos)]
+            }
         case 0xf0:
             if let (pos, text) = NativeMIDI.parseLCDSysEx(message) {
                 result.usbCommands = AlphaTrackUSB.lcdCommands(writing: text, at: Int(pos), current: lcd)
@@ -86,6 +89,7 @@ public struct DeviceState: Equatable {
             let start = cell * AlphaTrackUSB.lcdCellWidth
             cmds.append(AlphaTrackUSB.lcdCellCommand(cell: cell, chars: Array(lcd[start..<start + AlphaTrackUSB.lcdCellWidth])))
         }
+        if let pos = faderPosition { cmds.append(AlphaTrackUSB.faderCommand(position: pos)) }
         return cmds
     }
 

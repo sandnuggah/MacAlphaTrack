@@ -9,6 +9,13 @@ final class USBProtocolTests: XCTestCase {
                        [0x00, 0x00, 0, 0x00, 0x00, 0x00, 0x00, 0x00])
     }
 
+    func testFaderCommand() {
+        XCTAssertEqual(AlphaTrackUSB.faderCommand(position: 0), [0, 2, 0x00, 0x00, 0, 0, 0, 0])
+        XCTAssertEqual(AlphaTrackUSB.faderCommand(position: 5), [0, 2, 0x01, 0x40, 0, 0, 0, 0])
+        XCTAssertEqual(AlphaTrackUSB.faderCommand(position: 1023), [0, 2, 0xff, 0xc0, 0, 0, 0, 0])
+        XCTAssertEqual(AlphaTrackUSB.faderCommand(position: 5000), [0, 2, 0xff, 0xc0, 0, 0, 0, 0])
+    }
+
     func testLCDCellPadsAndTruncates() {
         XCTAssertEqual(AlphaTrackUSB.lcdCellCommand(cell: 5, chars: Array("AB".utf8)),
                        [0x00, 0x01, 5, 0x41, 0x42, 0x20, 0x20, 0x00])

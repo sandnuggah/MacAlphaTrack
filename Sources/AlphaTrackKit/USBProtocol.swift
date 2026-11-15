@@ -20,19 +20,18 @@ public enum AlphaTrackUSB {
         case offline = 0xff
     }
 
-    /// Light ids used by the LED command. Order confirmed by the Ardour `lightmap`.
-    /// `out`/`in` are the TranzPort names; on the AlphaTrack they are most likely the
-    /// TRACK R / TRACK L backlights (unverified).
+    /// Light ids used by the LED command. Every id -> LED verified on hardware
+    /// 2026-11-15. Ids 7 and 8 exist in the Linux enum but light nothing.
     public enum Light: UInt8, CaseIterable {
         case eq = 0
-        case out = 1
+        case trackRight = 1
         case f2 = 2
         case send = 3
-        case `in` = 4
+        case trackLeft = 4
         case f1 = 5
         case pan = 6
-        case undefined7 = 7
-        case undefined8 = 8
+        case unused7 = 7
+        case unused8 = 8
         case shift = 9
         case mute = 10
         case solo = 11
@@ -43,7 +42,7 @@ public enum AlphaTrackUSB {
         case auto = 16
         case f4 = 17
         case record = 18
-        case window = 19
+        case flip = 19
         case plugin = 20
         case f3 = 21
         case loop = 22
@@ -52,6 +51,15 @@ public enum AlphaTrackUSB {
     /// Build the 8-byte "set light" command: `00 00 nn ss 00 00 00 00`.
     public static func lightCommand(_ light: Light, on: Bool) -> [UInt8] {
         [0x00, 0x00, light.rawValue, on ? 0x01 : 0x00, 0x00, 0x00, 0x00, 0x00]
+    }
+
+    /// Move the motorized fader: `00 02 pp qq 00 00 00 00`, pp = position bits 9..2,
+    /// qq = bits 1..0 in the top two bits (mirrors the input report). Found by probing
+    /// 2026-11-15. Note the device does NOT report motor-driven positions back; the
+    /// input position bytes only change when a hand moves the fader.
+    public static func faderCommand(position: UInt16) -> [UInt8] {
+        let p = min(position, 0x3ff)
+        return [0x00, 0x02, UInt8(p >> 2), UInt8((p & 0x3) << 6), 0x00, 0x00, 0x00, 0x00]
     }
 
     /// The 16x2 LCD is written in 8 cells of 4 characters: cells 0-3 are the top row,

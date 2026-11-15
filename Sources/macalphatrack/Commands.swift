@@ -106,41 +106,53 @@ func decode(_ r: [UInt8], previous: [UInt8]?) -> String {
 }
 
 /// Cycle through every light id so the physical LED for each id can be recorded.
-func cmdLights(_ arg: String?) throws {
+/// The LCD names the id currently lit and the LED we expect it to be.
+func cmdLights(_ arg: String?, dwell: Double) throws {
     let dev = try AlphaTrackDevice()
+    func lcd(_ top: String, _ bottom: String) throws {
+        for (cell, chunk) in lcdCells(top: top, bottom: bottom).enumerated() { try dev.writeLCDCell(cell, chunk) }
+    }
     switch arg {
     case "on":
         for l in AlphaTrackUSB.Light.allCases { try dev.setLight(l, on: true) }
         print("all lights on")
-    case "off", nil where arg == "off":
+    case "off":
         for l in AlphaTrackUSB.Light.allCases { try dev.setLight(l, on: false) }
         print("all lights off")
     default:
         for l in AlphaTrackUSB.Light.allCases { try dev.setLight(l, on: false) }
-        print("Cycling light ids 0...22, 700 ms each. Note which LED lights for each id.")
+        print("Cycling light ids 0...22, \(dwell) s each. The LCD shows the id and the expected LED; note any mismatch.")
         for l in AlphaTrackUSB.Light.allCases {
-            print("  id \(l.rawValue) (\(l))")
+            let expect = "\(l)"
+            print(String(format: "  id %2d  expect %@", Int(l.rawValue), expect))
+            try lcd(String(format: "LIGHT ID %02d", Int(l.rawValue)), "exp " + expect)
             try dev.setLight(l, on: true)
-            usleep(700_000)
+            usleep(UInt32(dwell * 1_000_000))
             try dev.setLight(l, on: false)
         }
+        try lcd("cycle done", "")
         print("done")
     }
 }
 
-/// Write two lines of text to the LCD.
-func cmdLCD(top: String, bottom: String) throws {
-    let dev = try AlphaTrackDevice()
+/// Split two text lines into the 8 four-character LCD cells (padded / truncated).
+func lcdCells(top: String, bottom: String) -> [[UInt8]] {
     func row(_ s: String) -> [UInt8] {
         var b = Array(s.utf8.prefix(AlphaTrackUSB.lcdColumns))
         while b.count < AlphaTrackUSB.lcdColumns { b.append(0x20) }
         return b
     }
     let screen = row(top) + row(bottom)
-    for cell in 0..<AlphaTrackUSB.lcdCells {
+    return (0..<AlphaTrackUSB.lcdCells).map { cell in
         let start = cell * AlphaTrackUSB.lcdCellWidth
-        try dev.writeLCDCell(cell, Array(screen[start..<start + AlphaTrackUSB.lcdCellWidth]))
+        return Array(screen[start..<start + AlphaTrackUSB.lcdCellWidth])
     }
+}
+
+/// Write two lines of text to the LCD.
+func cmdLCD(top: String, bottom: String) throws {
+    let dev = try AlphaTrackDevice()
+    for (cell, chunk) in lcdCells(top: top, bottom: bottom).enumerated() { try dev.writeLCDCell(cell, chunk) }
     print("wrote LCD")
 }
 
@@ -156,4 +168,64 @@ func cmdSend(_ hexBytes: [String]) throws {
     let dev = try AlphaTrackDevice()
     try dev.write(cmd)
     print("sent \(hex(cmd))")
+}
+
+/// Search for the fader motor command. Candidate 8-byte commands are sent one by one;
+/// the LCD shows the running candidate number so a human can report which one moved
+/// the fader. A background reader also logs the raw report in case the device does
+/// report motor-driven positions after all.
+func cmdFaderProbe(dwell: Double, commandRange: ClosedRange<UInt8>) throws {
+    let dev = try AlphaTrackDevice()
+    let lock = NSLock()
+    var latest: [UInt8]? = nil
+    var reportCount = 0
+    let reader = Thread {
+        while true {
+            guard let bytes = try? dev.read() else { break }
+            lock.lock(); latest = bytes; reportCount += 1; lock.unlock()
+        }
+    }
+    reader.start()
+    func snapshot() -> (raw: [UInt8]?, count: Int) {
+        lock.lock(); defer { lock.unlock() }
+        return (latest, reportCount)
+    }
+    func lcd(_ top: String, _ bottom: String) throws {
+        for (cell, chunk) in lcdCells(top: top, bottom: bottom).enumerated() { try dev.writeLCDCell(cell, chunk) }
+    }
+    usleep(2_500_000) // first report arrives ~1.9 s after open
+    print("Probing commands \(commandRange), \(dwell) s each. Watch the fader; the LCD shows the PROBE number.")
+
+    /// Ways a 10-bit position might be packed into bytes 2...5 of the command.
+    let encodings: [(String, (UInt16) -> [UInt8])] = [
+        ("b2=pos>>2 b3=(pos&3)<<6 (like input)", { p in [UInt8(p >> 2), UInt8((p & 3) << 6), 0, 0] }),
+        ("b2=hi b3=lo (big-endian 16)",           { p in [UInt8(p >> 8), UInt8(p & 0xff), 0, 0] }),
+        ("b2=lo b3=hi (little-endian 16)",        { p in [UInt8(p & 0xff), UInt8(p >> 8), 0, 0] }),
+        ("b2=lsb7 b3=msb7 (MIDI pitch bend)",     { p in [UInt8(p & 0x7f), UInt8(p >> 7), 0, 0] }),
+        ("b2=msb7 b3=lsb7",                       { p in [UInt8(p >> 7), UInt8(p & 0x7f), 0, 0] }),
+        ("b2=pos>>3 (7-bit) b3=0",                { p in [UInt8(p >> 3), 0, 0, 0] }),
+        ("b2=pos>>2 (8-bit) b3=0",                { p in [UInt8(p >> 2), 0, 0, 0] }),
+        ("b2=0 b3=pos>>2 b4=(pos&3)<<6",          { p in [0, UInt8(p >> 2), UInt8((p & 3) << 6), 0] }),
+        ("b2=0 b3=hi b4=lo",                      { p in [0, UInt8(p >> 8), UInt8(p & 0xff), 0] }),
+        ("b2=0 b3=pos>>2 (8-bit)",                { p in [0, UInt8(p >> 2), 0, 0] }),
+    ]
+    var index = 0
+    for cmd in commandRange {
+        for (name, enc) in encodings {
+            index += 1
+            // Alternate top/bottom so a valid command always produces visible motion.
+            let target: UInt16 = index % 2 == 0 ? 900 : 120
+            let command: [UInt8] = [0x00, cmd] + enc(target) + [0x00, 0x00]
+            try lcd(String(format: "PROBE %03d", index), String(format: "cmd %02x %@", Int(cmd), target == 900 ? "up" : "down"))
+            let before = snapshot()
+            try dev.write(command)
+            usleep(UInt32(dwell * 1_000_000))
+            let after = snapshot()
+            print(String(format: "PROBE %03d  cmd %02x  %-40@ sent %@  target %4d  reports +%d  last %@",
+                         index, Int(cmd), name, hex(command), Int(target), after.count - before.count, hex(after.raw ?? [])))
+        }
+    }
+    try lcd("probe done", "")
+    print("done: \(index) candidates")
+    dev.abortReads()
 }
