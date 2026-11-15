@@ -71,14 +71,6 @@ struct MainWindow: View {
                 RowDivider()
                 Row {
                     HStack {
-                        Text("Run the driver")
-                        Spacer()
-                        Toggle("", isOn: $model.driverEnabled).toggleStyle(.switch).labelsHidden()
-                    }
-                }
-                RowDivider()
-                Row {
-                    HStack {
                         Text("Launch at login")
                         Spacer()
                         Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
@@ -100,6 +92,7 @@ struct MainWindow: View {
                     HStack {
                         Text("Status")
                         Spacer()
+                        Circle().fill(liveStatusColor).frame(width: 9, height: 9)
                         Text(liveStatusText).foregroundStyle(.secondary)
                     }
                 }
@@ -161,6 +154,14 @@ struct MainWindow: View {
         case .installed: return "Installed, up to date"
         case .outdated: return "Installed, older than this app's copy"
         case .symlink: return "Developer symlink installed"
+        }
+    }
+
+    private var liveStatusColor: Color {
+        switch model.liveStatus {
+        case .installed: return .green
+        case .outdated, .symlink: return .orange
+        case .notInstalled: return .gray
         }
     }
 

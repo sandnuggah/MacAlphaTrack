@@ -9,12 +9,6 @@ final class AppModel: ObservableObject {
     @Published var activity = DriverService.Activity()
     @Published var logLines: [String] = []
     @Published var lastError: String?
-    @Published var driverEnabled: Bool {
-        didSet {
-            UserDefaults.standard.set(driverEnabled, forKey: "driverEnabled")
-            driverEnabled ? startDriver() : stopDriver()
-        }
-    }
     @Published var liveStatus: LiveScriptInstaller.Status = .notInstalled
     @Published var liveFolder: URL
     @Published var launchAtLogin = false
@@ -35,7 +29,6 @@ final class AppModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
-        driverEnabled = defaults.object(forKey: "driverEnabled") as? Bool ?? true
         liveFolder = (defaults.string(forKey: "liveRemoteScriptsFolder").map { URL(fileURLWithPath: $0) })
             ?? LiveScriptInstaller.defaultRemoteScriptsFolder
         service.onStateChange = { [weak self] s in self?.state = s }
@@ -48,7 +41,7 @@ final class AppModel: ObservableObject {
         }
         refreshLiveStatus()
         refreshLaunchAtLogin()
-        if driverEnabled { startDriver() }
+        startDriver()  // the driver runs for as long as the app does
     }
 
     // MARK: driver
@@ -56,10 +49,6 @@ final class AppModel: ObservableObject {
     func startDriver() {
         lastError = nil
         do { try service.start() } catch { lastError = "Could not create MIDI ports: \(error.localizedDescription)" }
-    }
-
-    func stopDriver() {
-        DispatchQueue.global().async { [service] in service.stop() }
     }
 
     func clearLog() { logLines = [] }
