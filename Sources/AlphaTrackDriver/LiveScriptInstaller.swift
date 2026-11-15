@@ -107,3 +107,68 @@ public struct LiveScriptInstaller {
         }
     }
 }
+
+// MARK: - Finding Live's User Library
+
+extension LiveScriptInstaller {
+    /// Where Live says its User Library is, read from the newest installed version's
+    /// preferences (`~/Library/Preferences/Ableton/Live <version>/Library.cfg`, XML:
+    /// ContentLibrary/UserLibrary/LibraryProject with ProjectPath + ProjectName).
+    public struct DetectedLibrary: Equatable {
+        public let liveVersion: String
+        public let userLibrary: URL
+        public var remoteScriptsFolder: URL { userLibrary.appendingPathComponent("Remote Scripts") }
+    }
+
+    public static var defaultPreferencesRoot: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Preferences/Ableton")
+    }
+
+    /// nil when no Live preferences exist or none names a User Library.
+    public static func detectUserLibrary(preferencesRoot: URL = defaultPreferencesRoot) -> DetectedLibrary? {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(atPath: preferencesRoot.path) else { return nil }
+        let versions = entries.filter { $0.hasPrefix("Live ") }
+            .sorted { versionKey($0).lexicographicallyPrecedes(versionKey($1)) }
+            .reversed()
+        for name in versions {
+            let cfg = preferencesRoot.appendingPathComponent(name).appendingPathComponent("Library.cfg")
+            guard let data = fm.contents(atPath: cfg.path),
+                  let library = parseUserLibrary(data) else { continue }
+            return DetectedLibrary(liveVersion: String(name.dropFirst("Live ".count)), userLibrary: library)
+        }
+        return nil
+    }
+
+    static func versionKey(_ folder: String) -> [Int] {
+        folder.dropFirst("Live ".count).split(separator: ".").map { Int($0) ?? 0 }
+    }
+
+    static func parseUserLibrary(_ data: Data) -> URL? {
+        let parser = XMLParser(data: data)
+        let delegate = LibraryCfgDelegate()
+        parser.delegate = delegate
+        parser.parse()
+        guard let path = delegate.projectPath, !path.isEmpty else { return nil }
+        let name = delegate.projectName ?? "User Library"
+        return URL(fileURLWithPath: path).appendingPathComponent(name)
+    }
+
+    private final class LibraryCfgDelegate: NSObject, XMLParserDelegate {
+        var projectPath: String?
+        var projectName: String?
+        private var stack: [String] = []
+
+        func parser(_ parser: XMLParser, didStartElement name: String, namespaceURI: String?,
+                    qualifiedName: String?, attributes: [String: String]) {
+            stack.append(name)
+            guard stack.contains("UserLibrary"), stack.contains("LibraryProject"), projectPath == nil || projectName == nil else { return }
+            if name == "ProjectPath", projectPath == nil { projectPath = attributes["Value"] }
+            if name == "ProjectName", projectName == nil { projectName = attributes["Value"] }
+        }
+
+        func parser(_ parser: XMLParser, didEndElement name: String, namespaceURI: String?, qualifiedName: String?) {
+            _ = stack.popLast()
+        }
+    }
+}

@@ -109,13 +109,16 @@ struct MainWindow: View {
                 }
                 RowDivider()
                 Row {
-                    HStack {
+                    HStack(alignment: .firstTextBaseline) {
                         Text("Location")
                         Spacer()
-                        Text(model.liveDestinationPath)
-                            .font(.caption).foregroundStyle(.secondary)
-                            .truncationMode(.middle).lineLimit(1)
-                            .help(model.liveDestinationPath)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            Text(model.liveDestinationPath)
+                                .font(.caption).foregroundStyle(.secondary)
+                                .truncationMode(.middle).lineLimit(1)
+                                .help(model.liveDestinationPath)
+                            Text(model.liveFolderNote).font(.caption2).foregroundStyle(.tertiary)
+                        }
                         Button("Change…") { model.chooseLiveFolder() }
                     }
                 }

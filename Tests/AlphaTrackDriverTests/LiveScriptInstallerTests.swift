@@ -56,3 +56,65 @@ final class LiveScriptInstallerTests: XCTestCase {
         XCTAssertTrue(found!.path.hasSuffix("LiveRemoteScript/AlphaTrack"))
     }
 }
+
+final class LiveUserLibraryDetectionTests: XCTestCase {
+    var prefs: URL!
+
+    override func setUpWithError() throws {
+        prefs = FileManager.default.temporaryDirectory.appendingPathComponent("ableton-prefs-\(UUID().uuidString)")
+    }
+
+    override func tearDownWithError() throws {
+        try? FileManager.default.removeItem(at: prefs)
+    }
+
+    private func writeCfg(version: String, path: String?, name: String = "User Library") throws {
+        let dir = prefs.appendingPathComponent("Live \(version)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let project = path.map { """
+                <LibraryProject Id="0">
+                    <ProjectLocation />
+                    <ProjectName Value="\(name)" />
+                    <ProjectPath Value="\($0)" />
+                </LibraryProject>
+        """ } ?? ""
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <Ableton MajorVersion="5" Creator="Ableton Live \(version)">
+            <ContentLibrary>
+                <UserLibrary>
+        \(project)
+                </UserLibrary>
+                <PreferredFactoryPacksInstallationPath Value="/somewhere/else" />
+            </ContentLibrary>
+        </Ableton>
+        """
+        try xml.write(to: dir.appendingPathComponent("Library.cfg"), atomically: true, encoding: .utf8)
+    }
+
+    func testReadsPathAndNameFromNewestVersion() throws {
+        try writeCfg(version: "11.3.35", path: "/Volumes/Old/Ableton")
+        try writeCfg(version: "12.4.16", path: "/Users/me/Music/Ableton")
+        try writeCfg(version: "12.0.1", path: "/Users/me/Elsewhere", name: "My Library")
+        let found = LiveScriptInstaller.detectUserLibrary(preferencesRoot: prefs)
+        XCTAssertEqual(found?.liveVersion, "12.4.16")
+        XCTAssertEqual(found?.userLibrary.path, "/Users/me/Music/Ableton/User Library")
+        XCTAssertEqual(found?.remoteScriptsFolder.path, "/Users/me/Music/Ableton/User Library/Remote Scripts")
+    }
+
+    func testCustomLibraryNameAndFallbackToOlderVersion() throws {
+        try writeCfg(version: "12.4.16", path: nil)                       // newest has no project entry
+        try writeCfg(version: "12.1.0", path: "/Users/me/Elsewhere", name: "My Library")
+        let found = LiveScriptInstaller.detectUserLibrary(preferencesRoot: prefs)
+        XCTAssertEqual(found?.liveVersion, "12.1.0")
+        XCTAssertEqual(found?.userLibrary.path, "/Users/me/Elsewhere/My Library")
+    }
+
+    func testNoPreferences() {
+        XCTAssertNil(LiveScriptInstaller.detectUserLibrary(preferencesRoot: prefs))
+    }
+
+    func testVersionOrderingIsNumeric() {
+        XCTAssertTrue(LiveScriptInstaller.versionKey("Live 9.7.7").lexicographicallyPrecedes(LiveScriptInstaller.versionKey("Live 12.0.0")))
+    }
+}

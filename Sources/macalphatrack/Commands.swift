@@ -254,8 +254,12 @@ func cmdInstallLive(folder: String?) throws {
     guard let source = LiveScriptInstaller.bundledSource() else {
         throw NSError(domain: "macalphatrack", code: 2, userInfo: [NSLocalizedDescriptionKey: "cannot find the LiveRemoteScript/AlphaTrack folder"])
     }
-    let dest = folder.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? LiveScriptInstaller.defaultRemoteScriptsFolder
+    let detected = LiveScriptInstaller.detectUserLibrary()
+    let dest = folder.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) }
+        ?? detected?.remoteScriptsFolder
+        ?? LiveScriptInstaller.defaultRemoteScriptsFolder
     let installer = LiveScriptInstaller(source: source, remoteScriptsFolder: dest)
+    if folder == nil, let detected { print("Live \(detected.liveVersion) User Library: \(detected.userLibrary.path)") }
     print("source:      \(source.path)")
     print("destination: \(installer.destination.path)")
     print("before:      \(installer.status())")

@@ -57,6 +57,9 @@ notarization are on the TODO list.
 Live has no AlphaTrack surface of its own (it ships one for the sibling TranzPort), so
 `LiveRemoteScript/` provides one. Install it from the app's settings window, or with
 `macalphatrack install-live`, or `LiveRemoteScript/install.sh` for a developer symlink.
+The installer reads the User Library location from the newest installed Live's own
+preferences (`Library.cfg`), so a custom library location is found without asking; the
+settings window lets you override it.
 Then restart Live and choose Control Surface **AlphaTrack** with Input and Output
 **AlphaTrack** in Preferences › Link, Tempo & MIDI.
 

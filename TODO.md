@@ -28,7 +28,7 @@
 - [ ] Developer ID signing + notarization for distribution.
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
       new files tripping the dependency scanner). Everything uses `--build-system native` now.
-- [ ] Live script installer: detect a custom User Library location from Live's preferences instead of asking.
+- [x] Live script installer reads the User Library location from the newest Live's Library.cfg; a chosen folder still wins.
 
 ## Ableton Live script (`LiveRemoteScript/`)
 - [x] Tested inside Live 12.4 Suite: all mapped controls work; two bugs found and fixed (master track

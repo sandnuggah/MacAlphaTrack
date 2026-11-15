@@ -11,6 +11,8 @@ final class AppModel: ObservableObject {
     @Published var lastError: String?
     @Published var liveStatus: LiveScriptInstaller.Status = .notInstalled
     @Published var liveFolder: URL
+    /// Where the current Live folder came from, for the UI.
+    @Published var liveFolderNote: String = ""
     @Published var launchAtLogin = false
 
     private let service = DriverService(verbose: false, callbackQueue: .main)
@@ -29,8 +31,17 @@ final class AppModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
-        liveFolder = (defaults.string(forKey: "liveRemoteScriptsFolder").map { URL(fileURLWithPath: $0) })
-            ?? LiveScriptInstaller.defaultRemoteScriptsFolder
+        let detected = LiveScriptInstaller.detectUserLibrary()
+        if let chosen = defaults.string(forKey: "liveRemoteScriptsFolder") {
+            liveFolder = URL(fileURLWithPath: chosen)
+            liveFolderNote = "Chosen by you"
+        } else if let detected {
+            liveFolder = detected.remoteScriptsFolder
+            liveFolderNote = "From Live \(detected.liveVersion)'s preferences"
+        } else {
+            liveFolder = LiveScriptInstaller.defaultRemoteScriptsFolder
+            liveFolderNote = "Live's default location (no Live preferences found)"
+        }
         service.onStateChange = { [weak self] s in self?.state = s }
         service.onActivity = { [weak self] a in self?.activity = a }
         service.onLog = { [weak self] line in
@@ -110,6 +121,7 @@ final class AppModel: ObservableObject {
         NSApp.activate(ignoringOtherApps: true)
         if panel.runModal() == .OK, let url = panel.url {
             liveFolder = url
+            liveFolderNote = "Chosen by you"
             UserDefaults.standard.set(url.path, forKey: "liveRemoteScriptsFolder")
             refreshLiveStatus()
         }
