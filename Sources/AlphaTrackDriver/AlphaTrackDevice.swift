@@ -3,13 +3,13 @@ import IOKit
 import IOUSBHost
 import AlphaTrackKit
 
-enum DeviceError: Error, CustomStringConvertible {
+public enum DeviceError: Error, CustomStringConvertible {
     case notFound
     case noInterface
     case noEndpoints
     case shortWrite(Int)
 
-    var description: String {
+    public var description: String {
         switch self {
         case .notFound: return "no AlphaTrack found (vendor 0x165b, product 0xfad1). Is it plugged in?"
         case .noInterface: return "device configured but no USB interface appeared"
@@ -19,15 +19,15 @@ enum DeviceError: Error, CustomStringConvertible {
     }
 }
 
-struct EndpointInfo: CustomStringConvertible {
-    let address: UInt8
-    let attributes: UInt8
-    let maxPacketSize: UInt16
-    let interval: UInt8
+public struct EndpointInfo: CustomStringConvertible {
+    public let address: UInt8
+    public let attributes: UInt8
+    public let maxPacketSize: UInt16
+    public let interval: UInt8
 
-    var isIn: Bool { address & 0x80 != 0 }
-    var isInterrupt: Bool { attributes & 0x03 == 0x03 }
-    var description: String {
+    public var isIn: Bool { address & 0x80 != 0 }
+    public var isInterrupt: Bool { attributes & 0x03 == 0x03 }
+    public var description: String {
         let kind = ["control", "isochronous", "bulk", "interrupt"][Int(attributes & 0x03)]
         return String(format: "ep 0x%02x %@ %@ maxPacket=%d interval=%d",
                       address, isIn ? "IN " : "OUT", kind, maxPacketSize, interval)
@@ -35,17 +35,17 @@ struct EndpointInfo: CustomStringConvertible {
 }
 
 /// Raw USB access to one AlphaTrack via IOUSBHost (user space, no kext).
-final class AlphaTrackDevice {
+public final class AlphaTrackDevice {
     private let device: IOUSBHostDevice
     private let interface: IOUSBHostInterface
     private let inPipe: IOUSBHostPipe
     private let outPipe: IOUSBHostPipe
-    let endpoints: [EndpointInfo]
-    let inEndpoint: EndpointInfo
-    let outEndpoint: EndpointInfo
+    public let endpoints: [EndpointInfo]
+    public let inEndpoint: EndpointInfo
+    public let outEndpoint: EndpointInfo
 
     /// Find, configure and open the first AlphaTrack. Exclusive access.
-    init() throws {
+    public init() throws {
         let matching = IOUSBHostDevice.__createMatchingDictionary(
             withVendorID: NSNumber(value: AlphaTrackUSB.vendorID),
             productID: NSNumber(value: AlphaTrackUSB.productID),
@@ -83,7 +83,7 @@ final class AlphaTrackDevice {
     /// Blocking read of one interrupt IN transfer. IOUSBHost forbids timeouts on
     /// interrupt pipes, so this blocks until data arrives or `abortReads()` is called,
     /// in which case it returns nil.
-    func read() throws -> [UInt8]? {
+    public func read() throws -> [UInt8]? {
         let buffer = NSMutableData(length: Int(inEndpoint.maxPacketSize))!
         var transferred: UInt = 0
         var attempt = 0
@@ -121,12 +121,12 @@ final class AlphaTrackDevice {
     }
 
     /// Cancel a blocked `read()` from another thread.
-    func abortReads() {
+    public func abortReads() {
         try? inPipe.__abort(with: .asynchronous)
     }
 
     /// Blocking write of one 8-byte command.
-    func write(_ command: [UInt8]) throws {
+    public func write(_ command: [UInt8]) throws {
         precondition(command.count == AlphaTrackUSB.outputCommandLength)
         let data = NSMutableData(bytes: command, length: command.count)
         var transferred: UInt = 0
@@ -141,11 +141,11 @@ final class AlphaTrackDevice {
         guard Int(transferred) == command.count else { throw DeviceError.shortWrite(Int(transferred)) }
     }
 
-    func setLight(_ light: AlphaTrackUSB.Light, on: Bool) throws {
+    public func setLight(_ light: AlphaTrackUSB.Light, on: Bool) throws {
         try write(AlphaTrackUSB.lightCommand(light, on: on))
     }
 
-    func writeLCDCell(_ cell: Int, _ chars: [UInt8]) throws {
+    public func writeLCDCell(_ cell: Int, _ chars: [UInt8]) throws {
         try write(AlphaTrackUSB.lcdCellCommand(cell: cell, chars: chars))
     }
 

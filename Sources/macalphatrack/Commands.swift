@@ -1,5 +1,6 @@
 import Foundation
 import AlphaTrackKit
+import AlphaTrackDriver
 
 private var stopRequested = false
 private var sigintSource: DispatchSourceSignal?
@@ -228,4 +229,37 @@ func cmdFaderProbe(dwell: Double, commandRange: ClosedRange<UInt8>) throws {
     try lcd("probe done", "")
     print("done: \(index) candidates")
     dev.abortReads()
+}
+
+/// Run the driver headless until Ctrl-C / SIGTERM.
+func cmdRun(verbose: Bool) throws {
+    let service = DriverService(verbose: verbose, callbackQueue: DispatchQueue(label: "macalphatrack.log"))
+    let iso = ISO8601DateFormatter()
+    service.onLog = { message in
+        FileHandle.standardError.write("\(iso.string(from: Date())) \(message)\n".data(using: .utf8)!)
+    }
+    for sig in [SIGINT, SIGTERM] {
+        signal(sig, SIG_IGN)
+        let src = DispatchSource.makeSignalSource(signal: sig, queue: .global())
+        src.setEventHandler { service.stop() }
+        src.resume()
+        signalSources.append(src)
+    }
+    try service.runUntilStopped()
+}
+private var signalSources: [DispatchSourceSignal] = []
+
+/// Copy the Ableton Live control-surface script into Live's User Library.
+func cmdInstallLive(folder: String?) throws {
+    guard let source = LiveScriptInstaller.bundledSource() else {
+        throw NSError(domain: "macalphatrack", code: 2, userInfo: [NSLocalizedDescriptionKey: "cannot find the LiveRemoteScript/AlphaTrack folder"])
+    }
+    let dest = folder.map { URL(fileURLWithPath: ($0 as NSString).expandingTildeInPath) } ?? LiveScriptInstaller.defaultRemoteScriptsFolder
+    let installer = LiveScriptInstaller(source: source, remoteScriptsFolder: dest)
+    print("source:      \(source.path)")
+    print("destination: \(installer.destination.path)")
+    print("before:      \(installer.status())")
+    try installer.install()
+    print("after:       \(installer.status())")
+    print("Restart Live, then Preferences > Link, Tempo & MIDI > Control Surface: AlphaTrack, Input/Output: AlphaTrack.")
 }

@@ -5,8 +5,8 @@ import AlphaTrackKit
 /// A virtual CoreMIDI device named "AlphaTrack": one source (device -> DAW) and one
 /// destination (DAW -> device). Uses the MIDI 1.0 packet-list API, which is
 /// deprecated but far simpler for SysEx than UMP and still fully functional.
-final class MIDIBridge {
-    static let portName = "AlphaTrack"
+public final class MIDIBridge {
+    public static let portName = "AlphaTrack"
     // Stable unique ids so DAWs recognise the ports across restarts.
     private static let sourceUniqueID: Int32 = 0x4d41_5453 // "MATS"
     private static let destinationUniqueID: Int32 = 0x4d41_5444 // "MATD"
@@ -17,9 +17,9 @@ final class MIDIBridge {
     private var parser = MIDIParser()
     private let parserQueue = DispatchQueue(label: "macalphatrack.midi-in")
     /// Called with each complete MIDI message received on the destination.
-    var onReceive: (([UInt8]) -> Void)?
+    public var onReceive: (([UInt8]) -> Void)?
 
-    init() throws {
+    public init() throws {
         try check(MIDIClientCreateWithBlock("MacAlphaTrack" as CFString, &client) { _ in }, "MIDIClientCreate")
         try check(MIDISourceCreate(client, MIDIBridge.portName as CFString, &source), "MIDISourceCreate")
         MIDIObjectSetIntegerProperty(source, kMIDIPropertyUniqueID, MIDIBridge.sourceUniqueID)
@@ -40,7 +40,7 @@ final class MIDIBridge {
     }
 
     /// Emit one complete MIDI message on the source.
-    func send(_ message: [UInt8]) {
+    public func send(_ message: [UInt8]) {
         guard !message.isEmpty else { return }
         let size = 64 + message.count
         var storage = [UInt8](repeating: 0, count: size)

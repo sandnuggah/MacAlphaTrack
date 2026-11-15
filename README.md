@@ -18,6 +18,9 @@ anything written for Frontier's original driver should work unchanged. Buttons, 
 fader position and touch strip go out; LEDs, LCD text and fader motor position come in.
 Not yet: footswitch (unverified bit).
 
+Tested end to end with REAPER's built-in "Frontier AlphaTrack" control surface: track
+name and timecode on the LCD, fader following, LED feedback, transport and encoders.
+
 Roadmap (see `docs/PROTOCOL.md` and `TODO.md`):
 
 1. ~~Raw report dumper, protocol verification~~ done
@@ -25,27 +28,55 @@ Roadmap (see `docs/PROTOCOL.md` and `TODO.md`):
 3. ~~LEDs and LCD ← Native-mode MIDI in~~ done
 4. Fader motor (command still unknown, needs reverse engineering).
 5. Footswitch, LED id verification, touch calibration/debounce tuning.
-6. Run at login (LaunchAgent) or as a menu bar app.
+6. ~~Menu bar app with Live script installer and launch at login~~ done
+7. App icon, notarized release build.
 
-## Usage
+## Command line
 
 ```sh
 swift build -c release
-.build/release/macalphatrack run            # add --verbose to log every MIDI message
+.build/release/macalphatrack run            # headless driver; --verbose logs every MIDI message
 ```
 
-Leave it running; it waits for the unit, survives unplugging, and blanks the display on
-Ctrl-C. In your DAW, pick the **AlphaTrack** MIDI input and output and configure the
-AlphaTrack control surface in Native mode as you would with the original driver.
+It waits for the unit, survives unplugging, and blanks the display on Ctrl-C. In your DAW,
+pick the **AlphaTrack** MIDI input and output and configure the AlphaTrack control surface
+in Native mode as you would with the original driver.
 
-Other commands: `dump` (raw reports), `lights [on|off]`, `lcd "TOP" "BOTTOM"`, `send <hex bytes>`,
-`descriptors`, `info`.
+Other commands: `install-live`, `dump` (raw reports), `lights [on|off]`, `lcd "TOP" "BOTTOM"`,
+`send <hex bytes>`, `fader-probe`, `descriptors`, `info`.
+
+## The app
+
+`MacAlphaTrack.app` is a menu bar app that runs the driver in the background. Its panel
+shows whether the unit is connected and the MIDI traffic, lets you switch the driver off
+and on, installs or updates the Ableton Live control surface script into Live's User
+Library, and can register itself as a login item.
+
+```sh
+Scripts/make-app.sh            # -> build/MacAlphaTrack.app (release, ad-hoc signed)
+open build/MacAlphaTrack.app
+```
+
+Copy it to /Applications to keep it. The app and the `macalphatrack` CLI share the
+`AlphaTrackDriver` library; run only one of them at a time, since the unit can be opened
+by a single process.
+
+## Ableton Live
+
+`LiveRemoteScript/` holds a Live Control Surface script for the AlphaTrack (Live has
+none built in; it ships one for the sibling TranzPort). It drives the unit through the
+virtual ports in Native mode. See `LiveRemoteScript/README.md` for the mapping and
+`LiveRemoteScript/install.sh` to install it. Tested in Live 12.4 Suite; also unit-tested
+against a mock of Live's API.
 
 ## Layout
 
-- `Sources/AlphaTrackKit` – protocol constants, raw USB command encoders, Native-mode MIDI map. Pure Swift, unit-tested.
-- `Sources/macalphatrack` – the CLI/daemon: IOUSBHost transport, CoreMIDI virtual ports, subcommands.
+- `Sources/AlphaTrackKit` – protocol constants, report decoder, Native-mode MIDI translation. Pure Swift, unit-tested.
+- `Sources/AlphaTrackDriver` – IOUSBHost transport, CoreMIDI virtual ports, the driver service, the Live script installer.
+- `Sources/MacAlphaTrackApp` – the SwiftUI menu bar app. `Scripts/make-app.sh` wraps it into `MacAlphaTrack.app`.
+- `Sources/macalphatrack` – command-line tool for running headless and poking the hardware.
 - `docs/` – extracted Native Mode manual and consolidated protocol notes.
+- `LiveRemoteScript/` – Ableton Live Control Surface script, mock Live API and tests.
 
 ## Building
 
