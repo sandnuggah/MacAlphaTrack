@@ -3,8 +3,8 @@ import CoreMIDI
 import AlphaTrackKit
 
 /// A virtual CoreMIDI device named "AlphaTrack": one source (device -> DAW) and one
-/// destination (DAW -> device). Uses the MIDI 1.0 packet-list API, which is
-/// deprecated but far simpler for SysEx than UMP and still fully functional.
+/// destination (DAW -> device), created with the protocol-based API and declared as
+/// MIDI 1.0, so CoreMIDI hands us MIDI 1.0 UMP and downconverts anything newer.
 public final class MIDIBridge {
     public static let portName = "AlphaTrack"
     // Stable unique ids so DAWs recognise the ports across restarts.
@@ -14,17 +14,17 @@ public final class MIDIBridge {
     private var client = MIDIClientRef()
     private var source = MIDIEndpointRef()
     private var destination = MIDIEndpointRef()
-    private var parser = MIDIParser()
-    private let parserQueue = DispatchQueue(label: "macalphatrack.midi-in")
-    /// Called with each complete MIDI message received on the destination.
+    private var decoder = UMPDecoder()
+    private let decodeQueue = DispatchQueue(label: "macalphatrack.midi-in")
+    /// Called with each complete MIDI 1.0 message received on the destination.
     public var onReceive: (([UInt8]) -> Void)?
 
     public init() throws {
         try check(MIDIClientCreateWithBlock("MacAlphaTrack" as CFString, &client) { _ in }, "MIDIClientCreate")
-        try check(MIDISourceCreate(client, MIDIBridge.portName as CFString, &source), "MIDISourceCreate")
+        try check(MIDISourceCreateWithProtocol(client, MIDIBridge.portName as CFString, ._1_0, &source), "MIDISourceCreate")
         MIDIObjectSetIntegerProperty(source, kMIDIPropertyUniqueID, MIDIBridge.sourceUniqueID)
-        try check(MIDIDestinationCreateWithBlock(client, MIDIBridge.portName as CFString, &destination) { [weak self] packetList, _ in
-            self?.handle(packetList)
+        try check(MIDIDestinationCreateWithProtocol(client, MIDIBridge.portName as CFString, ._1_0, &destination) { [weak self] eventList, _ in
+            self?.handle(eventList)
         }, "MIDIDestinationCreate")
         MIDIObjectSetIntegerProperty(destination, kMIDIPropertyUniqueID, MIDIBridge.destinationUniqueID)
         for endpoint in [source, destination] {
@@ -39,29 +39,30 @@ public final class MIDIBridge {
         MIDIClientDispose(client)
     }
 
-    /// Emit one complete MIDI message on the source.
+    /// Emit one complete MIDI 1.0 message on the source.
     public func send(_ message: [UInt8]) {
-        guard !message.isEmpty else { return }
-        let size = 64 + message.count
-        var storage = [UInt8](repeating: 0, count: size)
-        storage.withUnsafeMutableBytes { raw in
-            let list = raw.baseAddress!.assumingMemoryBound(to: MIDIPacketList.self)
-            var packet = MIDIPacketListInit(list)
-            packet = MIDIPacketListAdd(list, size, packet, 0, message.count, message)
-            MIDIReceived(source, list)
+        let words = UMP.encode(message)
+        guard !words.isEmpty else { return }
+        var list = MIDIEventList()
+        withUnsafeMutablePointer(to: &list) { listPtr in
+            let packet = MIDIEventListInit(listPtr, ._1_0)
+            words.withUnsafeBufferPointer { buf in
+                _ = MIDIEventListAdd(listPtr, MemoryLayout<MIDIEventList>.size, packet, 0, buf.count, buf.baseAddress!)
+            }
+            MIDIReceivedEventList(source, listPtr)
         }
     }
 
-    private func handle(_ packetList: UnsafePointer<MIDIPacketList>) {
-        var bytes: [UInt8] = []
-        var packet = packetList.pointee.packet
-        for _ in 0..<packetList.pointee.numPackets {
-            let length = Int(packet.length)
-            withUnsafeBytes(of: &packet.data) { bytes.append(contentsOf: $0.prefix(length)) }
-            packet = MIDIPacketNext(&packet).pointee
+    private func handle(_ eventList: UnsafePointer<MIDIEventList>) {
+        var words: [UInt32] = []
+        for packet in eventList.unsafeSequence() {
+            let count = Int(packet.pointee.wordCount)
+            withUnsafeBytes(of: packet.pointee.words) { raw in
+                words.append(contentsOf: raw.bindMemory(to: UInt32.self).prefix(count))
+            }
         }
-        parserQueue.async { [self] in
-            for message in parser.feed(bytes) { onReceive?(message) }
+        decodeQueue.async { [self] in
+            for message in decoder.feed(words) { onReceive?(message) }
         }
     }
 

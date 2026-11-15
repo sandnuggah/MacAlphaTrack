@@ -140,19 +140,3 @@ final class DeviceStateTests: XCTestCase {
         XCTAssertTrue(DeviceState.clearCommands().allSatisfy { $0[1] == 1 || $0[3] == 0 })
     }
 }
-
-final class MIDIParserTests: XCTestCase {
-    func testChannelMessagesAndRunningStatus() {
-        var p = MIDIParser()
-        XCTAssertEqual(p.feed([0x90, 0x5e, 0x7f, 0x5e, 0x00]), [[0x90, 0x5e, 0x7f], [0x90, 0x5e, 0x00]])
-        XCTAssertEqual(p.feed([0xb0, 0x10]), [])
-        XCTAssertEqual(p.feed([0x03]), [[0xb0, 0x10, 0x03]])
-    }
-
-    func testSysExAcrossPacketsWithRealtimeInside() {
-        var p = MIDIParser()
-        XCTAssertEqual(p.feed([0xf0, 0x00, 0x01, 0xf8]), [])
-        XCTAssertEqual(p.feed([0x40, 0x20, 0x00, 0x10, 0x48, 0xf7, 0x90]), [[0xf0, 0x00, 0x01, 0x40, 0x20, 0x00, 0x10, 0x48, 0xf7]])
-        XCTAssertEqual(p.feed([0x08, 0x7f]), [[0x90, 0x08, 0x7f]])
-    }
-}
