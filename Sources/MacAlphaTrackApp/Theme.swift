@@ -75,6 +75,7 @@ struct WindowStyler: NSViewRepresentable {
             // keeps out of the title bar's safe area so it never paints over the controls.
             window.backgroundColor = Theme.windowNSColor
             window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
         }
     }
 
