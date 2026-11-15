@@ -24,7 +24,17 @@
       position (motor off while touched). Hosts MUST echo hand moves straight back, as REAPER
       and the Live script do, or the fader springs back on release. No suppression needed.
 - [x] Run at login: the app registers itself as a login item (SMAppService).
-- [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it.
+- [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it. Plan:
+      1. UMP codec in AlphaTrackKit (pure, tested): MIDI 1.0 bytes <-> 32-bit words. Channel voice =
+         one type-2 word; SysEx = type-3 64-bit packets, <=6 payload bytes each, status nibble
+         complete/start/continue/end, F0/F7 not carried. Decoder skips utility/real-time types and
+         reassembles SysEx. Round-trip tests incl. inquiry reply (3 packets) and LCD SysEx of 1/6/7/32 chars.
+      2. MIDIBridge: MIDISourceCreateWithProtocol / MIDIDestinationCreateWithProtocol (kMIDIProtocol_1_0),
+         MIDIReceiveBlock over MIDIEventList (MIDIEventPacketNext), send with MIDIEventListInit/Add +
+         MIDIReceivedEventList, one message per list. Keep names, unique ids, properties.
+      3. Retire MIDIParser (UMP packets are message-aligned).
+      4. Verify with the legacy-API scratch client (CoreMIDI translates), then REAPER and the Live script.
+      Deployment target stays macOS 13 (API is 11+). ~1 h of code plus a hardware session.
 - [x] Menu bar app (AppKit status item + SwiftUI settings window), `Scripts/make-app.sh` builds the bundle.
 - [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
