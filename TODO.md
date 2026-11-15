@@ -13,19 +13,19 @@
 - [ ] Fader feedback: the device does not report motor-driven positions. Decide whether the
       daemon should echo the commanded position back as MIDI (most DAWs don't need it).
 - [ ] LCD custom characters 0x00...0x07 (bargraph glyphs) – check what each renders.
-- [ ] Device occasionally re-enumerates itself (seen 3x on 2026-11-15, cause unknown).
-      The daemon must survive this; `dump` already reopens, the MIDI bridge must too.
+- [x] Device occasionally re-enumerates itself (seen 3x on 2026-11-15, cause unknown).
+      Both `dump` and the driver reopen it and restore state.
 
 ## Driver
 - [x] CoreMIDI bridge: virtual source/destination "AlphaTrack" speaking Native-mode MIDI.
-- [x] Debounce touch bits (3 reports). Still to tune after calibration; maybe rate-limit fader/strip (~15 ms) like the original driver.
+- [x] Touch filtering (assert/release hysteresis). Maybe rate-limit fader/strip (~15 ms) like the original driver.
 - [x] Clear LCD and LEDs on exit; restore them when the device reconnects.
 - [x] Fader setpoint semantics understood: the unit servos the fader to the last commanded
       position (motor off while touched). Hosts MUST echo hand moves straight back, as REAPER
       and the Live script do, or the fader springs back on release. No suppression needed.
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it.
-- [x] Menu bar app wrapper (SwiftUI MenuBarExtra), `Scripts/make-app.sh` builds the bundle.
+- [x] Menu bar app (AppKit status item + SwiftUI settings window), `Scripts/make-app.sh` builds the bundle.
 - [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
