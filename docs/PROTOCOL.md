@@ -77,6 +77,8 @@ LCD write  :  00 01 cc a0 a1 a2 a3 00      cc = cell 0..7 (4 chars each; 0-3 = t
 Fader move :  00 02 pp qq 00 00 00 00      pp = position bits 9..2, qq = bits 1..0 << 6      VERIFIED 2026-11-15 (pp); qq assumed to mirror the input report
               The device does NOT echo motor-driven positions in its reports; bytes 6-7 only
               change when a hand moves the fader (and read 0 after a reset until then).
+              The fader servos to the last commanded position once the hand lets go: a host
+              must echo hand-moved positions back as new setpoints or the fader springs back.
 ```
 
 Light ids — VERIFIED on hardware 2026-11-15 (ids 7 and 8 drive no LED):

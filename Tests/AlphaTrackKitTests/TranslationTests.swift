@@ -30,6 +30,34 @@ final class ReportTranslatorTests: XCTestCase {
         XCTAssertEqual(t.feed(touched).midi, [])
     }
 
+    func testProximityOscillationIsFilteredButRealTouchPasses() {
+        // Observed pattern on hardware: ~20 reports on, ~10 off, repeating, on a neighbour.
+        var t = ReportTranslator(touchAssertReports: 26, touchReleaseReports: 32)
+        _ = t.feed(rep("00 01 00 00 00 00 00 00 00 00 00 00"))
+        let on = rep("00 00 00 00 00 08 00 00 00 00 00 00"), off = rep("00 00 00 00 00 00 00 00 00 00 00 00")
+        var midi: [[UInt8]] = []
+        for _ in 0..<5 {
+            for _ in 0..<20 { midi += t.feed(on).midi }
+            for _ in 0..<10 { midi += t.feed(off).midi }
+        }
+        XCTAssertEqual(midi, [], "oscillating neighbour must not produce touch notes")
+        // A real touch: continuously on for 26 reports asserts, then flicker inside it is held.
+        for _ in 0..<25 { XCTAssertEqual(t.feed(on).midi, []) }
+        XCTAssertEqual(t.feed(on).midi, [[0x90, 0x78, 0x7f]])
+        for _ in 0..<31 { XCTAssertEqual(t.feed(off).midi, []) }
+        XCTAssertEqual(t.feed(on).midi, [])          // still held
+        for _ in 0..<31 { XCTAssertEqual(t.feed(off).midi, []) }
+        XCTAssertEqual(t.feed(off).midi, [[0x90, 0x78, 0x00]])
+    }
+
+    func testFaderMovementAssertsTouchImmediately() {
+        var t = ReportTranslator()
+        _ = t.feed(rep("00 01 00 00 00 00 00 00 00 00 00 00"))
+        _ = t.feed(rep("00 00 00 00 00 00 00 00 00 00 00 00"))
+        let out = t.feed(rep("00 00 00 00 00 40 10 00 00 00 00 00")) // touched + moved to 64
+        XCTAssertEqual(out.midi, [[0x90, 0x68, 0x7f], [0xe0, 0x00, 0x08]])
+    }
+
     func testEncodersAndFader() {
         var t = ReportTranslator()
         _ = t.feed(rep("00 01 00 00 00 00 00 00 00 00 00 00"))
