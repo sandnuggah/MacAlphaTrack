@@ -57,6 +57,11 @@ Scripts/make-app.sh            # -> build/MacAlphaTrack.app (release, ad-hoc sig
 open build/MacAlphaTrack.app
 ```
 
+The script also stamps the real SDK version into the binary with `vtool`: SwiftPM
+records the deployment target as the SDK version, and AppKit only gives an app the
+current window design (Liquid Glass chrome and window controls) when the recorded SDK
+is macOS 26 or newer. Without the stamp the app runs in pre-26 compatibility mode.
+
 Copy it to /Applications to keep it. The app and the `macalphatrack` CLI share the
 `AlphaTrackDriver` library; run only one of them at a time, since the unit can be opened
 by a single process.

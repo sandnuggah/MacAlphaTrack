@@ -14,11 +14,13 @@ struct MacAlphaTrackApp: App {
         }
         .menuBarExtraStyle(.window)
 
+        // Also opened by `open macalphatrack://main`.
         Window("MacAlphaTrack", id: MainWindow.id) {
             MainWindow()
                 .environmentObject(model)
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)
+        .handlesExternalEvents(matching: [MainWindow.id])
     }
 }

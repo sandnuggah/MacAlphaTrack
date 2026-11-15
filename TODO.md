@@ -27,6 +27,8 @@
 - [ ] Move from the deprecated MIDIPacketList API to MIDIEventList/UMP before Apple removes it.
 - [x] Menu bar app wrapper (SwiftUI MenuBarExtra), `Scripts/make-app.sh` builds the bundle.
 - [ ] App icon; Developer ID signing + notarization for distribution.
+- [ ] Debug `swift build` sometimes fails at link right after a source change and succeeds on rerun
+      (release and `make-app.sh` are unaffected). Probably the new SwiftPM build system; investigate.
 - [ ] Live script installer: detect a custom User Library location from Live's preferences instead of asking.
 
 ## Ableton Live script (`LiveRemoteScript/`)

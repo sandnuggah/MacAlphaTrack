@@ -91,32 +91,57 @@ struct MainWindow: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
-        Form {
-            Section {
-                LabeledContent("Driver") {
+        VStack(alignment: .leading, spacing: 20) {
+            SectionCard(title: "General") {
+                Row {
                     HStack {
+                        Text("Driver")
+                        Spacer()
                         Circle().fill(model.state == .connected ? .green : model.state == .waitingForDevice ? .orange : .gray)
                             .frame(width: 9, height: 9)
-                        Text(model.statusText)
+                        Text(model.statusText).foregroundStyle(.secondary)
                     }
                 }
-                Toggle("Run the driver", isOn: $model.driverEnabled)
-                Toggle("Launch at login", isOn: Binding(
-                    get: { model.launchAtLogin },
-                    set: { model.setLaunchAtLogin($0) }))
-                    .disabled(!model.isBundled)
-                if !model.isBundled {
-                    Text("Launch at login is available when running as MacAlphaTrack.app.")
-                        .font(.caption).foregroundStyle(.secondary)
+                RowDivider()
+                Row {
+                    HStack {
+                        Text("Run the driver")
+                        Spacer()
+                        Toggle("", isOn: $model.driverEnabled).toggleStyle(.switch).labelsHidden()
+                    }
                 }
-            } header: {
-                Text("General")
+                RowDivider()
+                Row {
+                    HStack {
+                        Text("Launch at login")
+                        Spacer()
+                        Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
+                            .toggleStyle(.switch).labelsHidden()
+                            .disabled(!model.isBundled)
+                    }
+                }
+                if !model.isBundled {
+                    RowDivider()
+                    Row {
+                        Text("Launch at login is available when running as MacAlphaTrack.app.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
             }
 
-            Section {
-                LabeledContent("Status", value: liveStatusText)
-                LabeledContent("Location") {
+            SectionCard(title: "Ableton Live control surface") {
+                Row {
                     HStack {
+                        Text("Status")
+                        Spacer()
+                        Text(liveStatusText).foregroundStyle(.secondary)
+                    }
+                }
+                RowDivider()
+                Row {
+                    HStack {
+                        Text("Location")
+                        Spacer()
                         Text(model.liveDestinationPath)
                             .font(.caption).foregroundStyle(.secondary)
                             .truncationMode(.middle).lineLimit(1)
@@ -124,36 +149,53 @@ struct MainWindow: View {
                         Button("Change…") { model.chooseLiveFolder() }
                     }
                 }
-                HStack {
-                    Button(liveButtonTitle) { model.installLiveScript() }
-                        .disabled(!model.liveSourceAvailable)
-                    if model.liveStatus != .notInstalled {
-                        Button("Reveal in Finder") { model.revealLiveScript() }
+                RowDivider()
+                Row {
+                    HStack {
+                        Button(liveButtonTitle) { model.installLiveScript() }
+                            .disabled(!model.liveSourceAvailable)
+                        if model.liveStatus != .notInstalled {
+                            Button("Reveal in Finder") { model.revealLiveScript() }
+                        }
                     }
                 }
-                Text("After installing, restart Live. Then in Preferences › Link, Tempo & MIDI choose Control Surface “AlphaTrack” with Input and Output “AlphaTrack”. Start MacAlphaTrack before Live so the ports exist.")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            } header: {
-                Text("Ableton Live control surface")
+                RowDivider()
+                Row {
+                    Text("After installing, restart Live. Then in Preferences › Link, Tempo & MIDI choose Control Surface “AlphaTrack” with Input and Output “AlphaTrack”. Start MacAlphaTrack before Live so the ports exist.")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             if let error = model.lastError {
-                Section {
-                    Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true)
+                SectionCard(title: "Problem") {
+                    Row { Text(error).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
                 }
             }
 
-            Section {
-                LogPane()
-            } header: {
-                Text("Log")
+            SectionCard(title: "Log") {
+                Row { LogPane() }
             }
         }
-        .formStyle(.grouped)
-        .frame(width: 520)
+        .padding(20)
+        .frame(width: 540)
         .fixedSize(horizontal: false, vertical: true)
+        // Keep the colour out of the title bar's safe area: SwiftUI windows are full-size,
+        // and a background that extends under the title bar paints over the title and
+        // traffic lights. The title bar shows the window's own background colour instead.
+        .background(Theme.window, ignoresSafeAreaEdges: [.horizontal, .bottom])
+        .background(WindowStyler())
+        .preferredColorScheme(.dark)
         .onAppear { model.refreshLiveStatus(); model.refreshLaunchAtLogin() }
+        .onOpenURL { url in
+            // macalphatrack://main?snapshot=/path.png -> write a rendering of this window (debug aid)
+            if let path = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.first(where: { $0.name == "snapshot" })?.value {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
+                    if let w = WindowStyler.mainWindow { WindowSnapshot.write(w, to: path) }
+                }
+            }
+        }
     }
 
     private var liveStatusText: String {
