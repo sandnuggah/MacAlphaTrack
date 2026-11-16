@@ -26,6 +26,11 @@
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [x] Moved to the protocol-based CoreMIDI API (MIDIEventList, MIDI 1.0 UMP); UMP codec in AlphaTrackKit.
 - [ ] Developer ID signing + notarization for distribution.
+- [ ] Investigate publishing the source through Homebrew (a tap with a formula that builds from
+      source, or a cask once there is a notarized release) so installs avoid Gatekeeper.
+- [ ] Menu bar header: add a connection status indicator (coloured dot) to the first menu item.
+- [ ] Investigate running without a menu bar icon at all (e.g. a preference to hide it, with the
+      settings window reachable via `open -a MacAlphaTrack` / macalphatrack://main, or a LaunchAgent).
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
       new files tripping the dependency scanner). Everything uses `--build-system native` now.
 - [x] Live script installer reads the User Library location from the newest Live's Library.cfg; a chosen folder still wins.
