@@ -29,6 +29,8 @@
 - [ ] Investigate publishing the source through Homebrew (a tap with a formula that builds from
       source, or a cask once there is a notarized release) so installs avoid Gatekeeper.
 - [ ] Menu bar header: add a connection status indicator (coloured dot) to the first menu item.
+- [ ] Remove the macalphatrack:// URL scheme and the snapshot debug hook (CFBundleURLTypes in
+      make-app.sh, AppDelegate.application(_:open:), WindowSnapshot) once no longer needed for testing.
 - [ ] Investigate running without a menu bar icon at all (e.g. a preference to hide it, with the
       settings window reachable via `open -a MacAlphaTrack` / macalphatrack://main, or a LaunchAgent).
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
