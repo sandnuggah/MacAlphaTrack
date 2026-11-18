@@ -18,7 +18,8 @@
 
 ## Driver
 - [x] CoreMIDI bridge: virtual source/destination "AlphaTrack" speaking Native-mode MIDI.
-- [x] Touch filtering (assert/release hysteresis). Maybe rate-limit fader/strip (~15 ms) like the original driver.
+- [x] Touch filtering (assert/release hysteresis). Rate limiting considered and dropped 2026-11-18:
+      Frontier's ~15 ms limit applied to encoder turns only, and one message per 8 ms report is no load.
 - [x] Clear LCD and LEDs on exit; restore them when the device reconnects.
 - [x] Fader setpoint semantics understood: the unit servos the fader to the last commanded
       position (motor off while touched). Hosts MUST echo hand moves straight back, as REAPER
