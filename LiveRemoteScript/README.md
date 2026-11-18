@@ -6,7 +6,7 @@ modelled on the Tranzport script that ships with Live (same plain-object style, 
 `_Framework` dependency), so it should work on Live 11 and 12.
 
 Status: tested in Live 12.4 Suite on 2026-11-15 (transport, tracks, arm/mute/solo, fader
-both ways, encoder modes, F-keys, strip, SHIFT display). Also unit-tested against a mock of
+both ways, encoder modes, FLIP, F-keys, strip scrub and shuttle, automation LEDs, SHIFT display). Also unit-tested against a mock of
 Live's API: `python3 -m unittest discover -s tests`.
 
 ## Install

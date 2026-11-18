@@ -40,6 +40,6 @@
 ## Ableton Live script (`LiveRemoteScript/`)
 - [x] Tested inside Live 12.4 Suite: all mapped controls work; two bugs found and fixed (master track
       listeners, fader setpoint echo).
-- [x] FLIP (swap fader with the left encoder's parameter) and 2-finger strip shuttle. Needs a pass in Live.
-- [x] AUTO WRITE LED = automation arm, READ LED = no overridden automation; SHIFT+AUTO re-enables. Needs a pass in Live.
+- [x] FLIP (swap fader with the left encoder's parameter) and 2-finger strip shuttle. Confirmed in Live 12.4.
+- [x] AUTO WRITE LED = automation arm, READ LED = no overridden automation; SHIFT+AUTO re-enables. Confirmed in Live 12.4.
 - [ ] Device mode: follow Live's blue-hand "selected device" more closely; parameter banks of 3 feel small.
