@@ -74,8 +74,9 @@ class MixerDevice(object):
 
 
 class Device(object):
-    def __init__(self, name, params):
+    def __init__(self, name, params, class_name="Generic"):
         self.name = name
+        self.class_name = class_name
         self.parameters = [DeviceParameter("Device On", 1.0, 0.0, 1.0, True)] + params
 
 
@@ -138,7 +139,7 @@ class SongView(Observable):
 
 
 class Song(Observable):
-    _observed = ("record_mode", "loop", "metronome", "session_automation_record", "re_enable_automation_enabled", "tracks", "tempo", "is_playing")
+    _observed = ("record_mode", "loop", "metronome", "session_automation_record", "re_enable_automation_enabled", "appointed_device", "tracks", "tempo", "is_playing")
 
     def __init__(self, tracks, returns=1):
         Observable.__init__(self)
@@ -156,6 +157,7 @@ class Song(Observable):
         self.current_song_time = 0.0
         self.can_undo = True
         self.can_redo = False
+        self.appointed_device = None  # the device carrying Live's blue hand
         self.re_enable_automation_enabled = False  # True once automation has been overridden
         self.undone = 0
         self.redone = 0
@@ -227,6 +229,12 @@ class CInstance(object):
     def request_rebuild_midi_map(self):
         self.rebuilds += 1
 
+    def update_locks(self):
+        self.lock_updates = getattr(self, "lock_updates", 0) + 1
+
+    def toggle_lock(self):
+        self.lock_toggles = getattr(self, "lock_toggles", 0) + 1
+
     def log_message(self, message):
         self.log.append(message)
 
@@ -247,4 +255,41 @@ def install():
     sys.modules["Live"] = live
     sys.modules["Live.Application"] = app_mod
     sys.modules["Live.MidiMap"] = midimap
+
+    # Stand-in for Live's _Generic.Devices: curated banks by device class name, with the
+    # same fallbacks as the real module for unknown devices.
+    generic = types.ModuleType("_Generic")
+    devices = types.ModuleType("_Generic.Devices")
+    devices.DEVICE_DICT = {}
+    devices.BANK_NAME_DICT = {}
+    devices.DEVICE_BOB_DICT = {}
+
+    def by_name(device, name):
+        for p in device.parameters:
+            if p.name == name:
+                return p
+        return None
+
+    def parameter_banks(device):
+        if device.class_name in devices.DEVICE_DICT:
+            return [[by_name(device, n) for n in bank] for bank in devices.DEVICE_DICT[device.class_name]]
+        raw = device.parameters[1:]
+        return [raw[i:i + 8] for i in range(0, len(raw), 8)]
+
+    def parameter_bank_names(device):
+        if device.class_name in devices.BANK_NAME_DICT:
+            return devices.BANK_NAME_DICT[device.class_name]
+        return ["Bank %d" % (i + 1) for i in range(len(parameter_banks(device)))]
+
+    def best_of_parameter_bank(device):
+        if device.class_name in devices.DEVICE_BOB_DICT:
+            return [by_name(device, n) for n in devices.DEVICE_BOB_DICT[device.class_name][0]]
+        return device.parameters[1:9]
+
+    devices.parameter_banks = parameter_banks
+    devices.parameter_bank_names = parameter_bank_names
+    devices.best_of_parameter_bank = best_of_parameter_bank
+    generic.Devices = devices
+    sys.modules["_Generic"] = generic
+    sys.modules["_Generic.Devices"] = devices
     return live

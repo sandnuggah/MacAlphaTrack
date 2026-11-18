@@ -6,9 +6,37 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import Live
 from .consts import *
 
+# Live's own curated parameter banks ("Best of" plus named banks per device type).
+try:
+    from _Generic.Devices import best_of_parameter_bank, parameter_bank_names, parameter_banks
+except ImportError:  # not running inside Live
+    best_of_parameter_bank = parameter_bank_names = parameter_banks = None
+
 
 def _clamp(value, lo, hi):
     return lo if value < lo else hi if value > hi else value
+
+
+def _abbr(name, width):
+    """Fit a parameter name into `width` characters: drop inner vowels and spaces first."""
+    name = (name or "").strip()
+    if len(name) <= width:
+        return name
+    return (name[0] + "".join(c for c in name[1:] if c not in "aeiou "))[:width]
+
+
+def _device_to_appoint(device):
+    """A drum rack without macro mappings stands in for the first device of its selected
+    chain (same rule as Live's own DeviceProvider)."""
+    try:
+        if device != None and device.can_have_drum_pads and not device.has_macro_mappings \
+                and len(device.chains) > 0:
+            chain = device.view.selected_chain
+            if chain != None and len(chain.devices) > 0:
+                return _device_to_appoint(chain.devices[0])
+    except AttributeError:
+        pass
+    return device
 
 
 def _encoder_delta(cc_value):
@@ -55,6 +83,8 @@ class AlphaTrack(object):
         self._shuttle_origin = None
         self._shuttle_speed = 0
         self._flip = False
+        self._pages_cache = None  # (device, pages)
+        self._locked_device = None
         self._last_lines = (None, None)
         self._pending_lines = ("", "")
         self._param_hint = None  # (text, ticks_to_live)
@@ -65,6 +95,8 @@ class AlphaTrack(object):
         self._last_fader_sent = None
 
         self.send_midi(FORCE_NATIVE_MODE)
+        if hasattr(self._c, "update_locks"):
+            self._c.update_locks()   # tell Live to re-read can_lock_to_devices()
         self._install_song_listeners()
         self._attach_track(self.song().view.selected_track)
         self._set_lines("    AlphaTrack  ", " Ableton  Live  ")
@@ -97,8 +129,25 @@ class AlphaTrack(object):
     def suggest_map_mode(self, *_):
         return Live.MidiMap.MapMode.relative_signed_bit
 
+    # Device support. Live only shows the blue hand on the appointed device for a surface
+    # that declares it can lock to devices, so the lock protocol is implemented in full.
     def can_lock_to_devices(self):
-        return False
+        return True
+
+    def lock_to_device(self, device):
+        """Live asks us to stay on `device` regardless of the selection."""
+        self._locked_device = device
+        self._on_appointed_device_changed()
+
+    def unlock_from_device(self, device):
+        self._locked_device = None
+        self._appoint_selected_device()
+
+    def restore_bank(self, bank_index):
+        pass  # pages are kept per session only
+
+    def toggle_lock(self):
+        self._c.toggle_lock()
 
     def connect_script_instances(self, instanciated_scripts):
         pass
@@ -135,6 +184,7 @@ class AlphaTrack(object):
             (song, "metronome", self._update_f4_led),
             (song, "session_automation_record", self._update_auto_led),
             (song, "re_enable_automation_enabled", self._update_auto_led),
+            (song, "appointed_device", self._on_appointed_device_changed),
             (song, "tracks", self._on_tracks_changed),
             (song, "tempo", self._request_line2),
             (song.view, "selected_scene", self._request_line2),
@@ -186,6 +236,7 @@ class AlphaTrack(object):
                 self._track_listeners.append((send, "value", self._request_line2))
         track.view.add_selected_device_listener(self._on_device_changed)
         self._track_listeners.append((track.view, "selected_device", self._on_device_changed))
+        self._appoint_selected_device()
 
     def _detach_track(self):
         for obj, name, cb in self._track_listeners:
@@ -210,7 +261,34 @@ class AlphaTrack(object):
         self._update_track_leds()
 
     def _on_device_changed(self):
+        """The track's selected device changed: give it Live's blue hand."""
+        self._appoint_selected_device()
+
+    def _appoint_selected_device(self):
+        t = self._track
+        song = self.song()
+        if t is None or not hasattr(song, "appointed_device"):
+            return
+        device = t.view.selected_device
+        if device == None and len(t.devices) > 0:
+            device = t.devices[0]
+        device = _device_to_appoint(device)
+        if song.appointed_device != device:
+            try:
+                song.appointed_device = device   # fires _on_appointed_device_changed
+                return
+            except RuntimeError as e:            # Live refused the change at this moment
+                self.log("could not appoint device: %r" % (e,))
+        self._on_appointed_device_changed()
+
+    def _on_appointed_device_changed(self):
+        """The blue-hand device changed (by us, by a click in Live, or another surface)."""
+        self._pages_cache = None
         self._device_page = 0
+        if self._mode == MODE_DEVICE:
+            device = self._selected_device()
+            self._hint(device.name if device != None else "No device")
+        self._send_fader_position()
         self._request_line2()
 
     def _on_volume_changed(self):
@@ -359,6 +437,8 @@ class AlphaTrack(object):
         if self._param_hint is not None:
             return self._param_hint[0]
         track = self._track
+        if self._mode == MODE_DEVICE:
+            return self._device_line()
         if track is None or not track.has_audio_output:
             return "No audio output"
         mixer = track.mixer_device
@@ -369,10 +449,19 @@ class AlphaTrack(object):
             if not sends:
                 return "No sends"
             return " ".join(("%-4s" % str(s)[:4]) for s in sends)[:LCD_COLS]
+        return ""
+
+    def _device_line(self):
+        """Device mode: the three parameter names under the encoders."""
         device = self._selected_device()
-        if device is None:
+        if device == None:
             return "No device"
-        return device.name
+        pages = self._device_pages()
+        if not pages:
+            return device.name
+        params = pages[self._device_page % len(pages)][3]
+        names = [p.name if p != None else "" for p in params] + ["", "", ""]
+        return "%-5s %-5s %-4s" % (_abbr(names[0], 5), _abbr(names[1], 5), _abbr(names[2], 4))
 
     def _position_text(self):
         song = self.song()
@@ -385,7 +474,11 @@ class AlphaTrack(object):
         return "%3d.%d.%02d %6.1fbpm" % (bt.bars, bt.beats, bt.ticks, song.tempo)
 
     def _show_param(self, name, value_text):
-        self._param_hint = ("%-8s%8s" % (name[:8], value_text[:8]), 15)
+        self._hint("%-8s%8s" % (name[:8], value_text[:8]))
+
+    def _hint(self, text):
+        """Show `text` on line 2 for about 1.5 s."""
+        self._param_hint = (text, 15)
         self._pending_lines = (self._pending_lines[0], None)
 
     # ----- device -> state ---------------------------------------------------
@@ -476,9 +569,11 @@ class AlphaTrack(object):
                 self._set_mode(MODE_SEND)
         elif note in (PLUGIN, EQ):
             if self._mode == MODE_DEVICE and note == PLUGIN:
-                self._page_device(1)
+                self._page_device(-1 if self._shift else 1)
             else:
                 self._set_mode(MODE_DEVICE)
+                device = self._selected_device()
+                self._hint(device.name if device != None else "No device")
         elif note == AUTO:
             if self._shift:
                 if hasattr(song, "re_enable_automation"):
@@ -525,11 +620,13 @@ class AlphaTrack(object):
         self._request_line2()
 
     def _page_device(self, direction):
-        params = self._device_params()
-        pages = max(1, (len(params) + 2) // 3)
-        self._device_page = (self._device_page + direction) % pages
+        pages = self._device_pages()
+        if not pages:
+            return
+        self._device_page = (self._device_page + direction) % len(pages)
+        bank, index, count, _ = pages[self._device_page]
+        self._hint("%-12s%4s" % (bank[:12], "%d/%d" % (index, count)))
         self._send_fader_position()
-        self._request_line2()
 
     def _fire(self):
         song = self.song()
@@ -631,19 +728,53 @@ class AlphaTrack(object):
         return sends[start:start + 3]
 
     def _selected_device(self):
+        """The device the encoders act on: Live's appointed (blue hand) device, falling back
+        to the track's selected or first device."""
+        if self._locked_device != None:
+            return self._locked_device
+        appointed = getattr(self.song(), "appointed_device", None)
+        if appointed != None:
+            return appointed
         t = self._track
         if t is None:
             return None
         device = t.view.selected_device
-        if device is None and len(t.devices) > 0:
+        if device == None and len(t.devices) > 0:
             device = t.devices[0]
         return device
 
-    def _device_params(self):
+    def _device_pages(self):
+        """Pages of up to three parameters: Live's "Best of" bank first, then its named banks,
+        each bank split in threes. A page is (bank name, index in bank, pages in bank, params)."""
         device = self._selected_device()
-        if device is None:
+        if device == None:
             return []
-        return list(device.parameters)[1:]  # parameter 0 is Device On
+        if self._pages_cache is not None and self._pages_cache[0] == device:
+            return self._pages_cache[1]
+        banks = []
+        if parameter_banks is not None:
+            try:
+                named = [list(b) for b in parameter_banks(device)]
+                names = list(parameter_bank_names(device))
+                best = list(best_of_parameter_bank(device))
+                if named and [p for p in best if p != None] != [p for p in named[0] if p != None]:
+                    banks.append(("Best of", best))
+                for n, bank in enumerate(named):
+                    banks.append((names[n] if n < len(names) else "Bank %d" % (n + 1), bank))
+            except Exception as e:  # fall back to the raw parameter list
+                self.log("bank lookup failed for %s: %r" % (getattr(device, "class_name", "?"), e))
+                banks = []
+        if not banks:
+            raw = list(device.parameters)[1:]  # parameter 0 is Device On
+            banks = [("Bank %d" % (n // 8 + 1), raw[n:n + 8]) for n in range(0, len(raw), 8)]
+        pages = []
+        for name, bank in banks:
+            params = [p for p in bank if p != None]
+            count = (len(params) + 2) // 3
+            for k in range(count):
+                pages.append((name, k + 1, count, params[k * 3:k * 3 + 3]))
+        self._pages_cache = (device, pages)
+        return pages
 
     def _volume_param(self):
         t = self._track
@@ -673,6 +804,8 @@ class AlphaTrack(object):
         if self._mode == MODE_SEND:
             sends = self._visible_sends()
             return sends[index] if index < len(sends) else None
-        params = self._device_params()
-        i = self._device_page * 3 + index
-        return params[i] if i < len(params) else None
+        pages = self._device_pages()
+        if not pages:
+            return None
+        params = pages[self._device_page % len(pages)][3]
+        return params[index] if index < len(params) else None

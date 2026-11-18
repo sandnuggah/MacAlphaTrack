@@ -35,7 +35,16 @@ class AlphaTrackScriptTests(unittest.TestCase):
                                            fake_live.DeviceParameter("1 Gain A", 0.5),
                                            fake_live.DeviceParameter("1 Q A", 0.5),
                                            fake_live.DeviceParameter("2 Freq A", 0.5)])
-        self.song = fake_live.Song([fake_live.Track("Drums", devices=[eq]), fake_live.Track("Bass"),
+        P = fake_live.DeviceParameter
+        self.comp = fake_live.Device("Compressor", [P(n, 0.5) for n in (
+            "Threshold", "Ratio", "Attack", "Release", "Gain", "Knee", "Model", "Dry/Wet")], class_name="Compressor2")
+        self.util = fake_live.Device("Utility", [P("Gain", 0.5), P("Width", 0.5)])
+        G = sys.modules["_Generic.Devices"]
+        G.DEVICE_BOB_DICT = {"Compressor2": (("Threshold", "Ratio", "Model", "Attack", "Release", "Gain", "Dry/Wet", "Nope"),)}
+        G.DEVICE_DICT = {"Compressor2": (("Threshold", "Ratio", "Attack", "Release"), ("Gain", "Knee", "Model", "Dry/Wet"))}
+        G.BANK_NAME_DICT = {"Compressor2": ("Dynamics", "Output")}
+        self.song = fake_live.Song([fake_live.Track("Drums", devices=[eq]),
+                                    fake_live.Track("Bass", devices=[self.comp, self.util]),
                                     fake_live.Track("MIDI", has_audio_output=False)])
         LIVE.Application.get_application().view.visible = "Arranger"
         self.c = fake_live.CInstance(self.song)
@@ -350,6 +359,79 @@ class AlphaTrackScriptTests(unittest.TestCase):
         self.assertFalse(self.song.re_enable_automation_enabled)
         self.assertTrue(led(self.sent, AUTO_READ_LED))
         self.assertTrue(self.song.session_automation_record)  # SHIFT+AUTO did not toggle arm
+
+    def test_blue_hand_follows_selection(self):
+        drums, bass = self.song.tracks[0], self.song.tracks[1]
+        self.assertIs(self.song.appointed_device, drums.devices[0])     # appointed at startup
+        self.tap(TRACK_R)
+        self.assertIs(self.song.appointed_device, self.comp)            # follows the track
+        bass.view.selected_device = self.util                           # click another device in Live
+        self.assertIs(self.song.appointed_device, self.util)
+        self.tap(PLUGIN)
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(self.util.parameters[1].value, 0.5 + 8 / 64.0)
+        self.song.appointed_device = self.comp                          # appointed from elsewhere
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(self.comp.parameters[1].value, 0.5 + 8 / 64.0)
+        self.tap(TRACK_R)                                               # MIDI track without devices
+        self.assertIsNone(self.song.appointed_device)
+        self.tick()
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "No device".ljust(16))
+
+    def test_declares_device_support_and_honours_lock(self):
+        self.assertTrue(self.script.can_lock_to_devices())
+        self.assertEqual(self.c.lock_updates, 1)
+        self.tap(TRACK_R)
+        self.tap(PLUGIN)
+        self.script.lock_to_device(self.util)                 # Live locks us to Utility
+        self.song.tracks[1].view.selected_device = self.comp  # selection moves elsewhere
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(self.util.parameters[1].value, 0.5 + 8 / 64.0)
+        self.script.unlock_from_device(self.util)
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(self.comp.parameters[1].value, 0.5 + 8 / 64.0)
+        self.script.toggle_lock()
+        self.assertEqual(self.c.lock_toggles, 1)
+        self.script.restore_bank(0)
+
+    def test_curated_banks_page_in_threes(self):
+        byname = dict((p.name, p) for p in self.comp.parameters)
+        self.tap(TRACK_R)
+        self.tap(PLUGIN)
+        self.tick()
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "Compressor".ljust(16))      # device name first
+        self.tick(20)
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "Thrsh Ratio Mdl ")          # Best of, page 1
+        self.script.receive_midi((CC_STATUS, 0x12, 0x08))                          # right encoder
+        self.assertAlmostEqual(byname["Model"].value, 0.5 + 8 / 64.0)
+        self.tap(PLUGIN)
+        self.tick()
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "Best of      2/3")
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(byname["Attack"].value, 0.5 + 8 / 64.0)
+        self.tap(PLUGIN)                                                           # 3/3: one parameter, missing name dropped
+        self.script.receive_midi((CC_STATUS, 0x10, 0x08))
+        self.assertAlmostEqual(byname["Dry/Wet"].value, 0.5 + 8 / 64.0)
+        self.script.receive_midi((CC_STATUS, 0x11, 0x08))                          # empty slot: ignored
+        self.tap(PLUGIN)
+        self.tick()
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "Dynamics     1/2")          # named banks follow
+        self.press(SHIFT)
+        self.tap(PLUGIN)                                                           # SHIFT pages back
+        self.release(SHIFT)
+        self.assertEqual(self.script._device_page, 2)
+        for _ in range(5):
+            self.tap(PLUGIN)                                                       # 7 pages, wraps
+        self.assertEqual(self.script._device_page, 0)
+
+    def test_device_mode_works_on_tracks_without_audio_output(self):
+        midi = self.song.tracks[2]
+        midi.devices.append(self.util)
+        self.tap(TRACK_R)
+        self.tap(TRACK_R)
+        self.tap(PLUGIN)
+        self.tick(20)
+        self.assertEqual(lcd(self.sent, LCD_LINE_2), "Gain  Width     ")
 
     def test_lcd_only_resent_on_change(self):
         self.tick(3)

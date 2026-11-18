@@ -6,7 +6,7 @@ modelled on the Tranzport script that ships with Live (same plain-object style, 
 `_Framework` dependency), so it should work on Live 11 and 12.
 
 Status: tested in Live 12.4 Suite on 2026-11-15 (transport, tracks, arm/mute/solo, fader
-both ways, encoder modes, FLIP, F-keys, strip scrub and shuttle, automation LEDs, SHIFT display). Also unit-tested against a mock of
+both ways, encoder modes, FLIP, F-keys, strip scrub and shuttle, automation LEDs, SHIFT display) and on 2026-11-18 (Device mode: blue hand, curated banks, paging). Also unit-tested against a mock of
 Live's API: `python3 -m unittest discover -s tests`.
 
 ## Install
@@ -33,7 +33,7 @@ Control Surface **AlphaTrack**, Input **AlphaTrack**, Output **AlphaTrack**.
 | FLIP | swap fader and left encoder: the fader takes the left encoder's parameter (pan, first send, first device parameter) and the left encoder takes volume (LED) | |
 | PAN | encoder mode: L = pan, M = volume; push L = centre pan | |
 | SEND | encoder mode: sends A B C; press again for next 3; push = send off | |
-| PLUG-IN / EQ | encoder mode: 3 parameters of selected device; PLUG-IN again = next 3 | |
+| PLUG-IN / EQ | encoder mode: 3 parameters of the blue-hand device, LCD shows their names; PLUG-IN again = next page | previous page |
 | Encoders | turn = change, LCD shows name and value briefly | fine steps |
 | AUTO | automation arm on/off (AUTO and WRITE LEDs) | re-enable automation |
 | READ LED | lit while all automation plays back; dark when a parameter has been overridden | |
@@ -47,3 +47,12 @@ Control Surface **AlphaTrack**, Input **AlphaTrack**, Output **AlphaTrack**.
 | LCD | line 1 track name; line 2 mode info | position and tempo |
 
 Not mapped: EQ has no mode of its own (it selects device mode).
+
+### Device mode
+
+The script gives Live's blue hand to the selected device of the selected track, and follows
+it when you click another device or track. Parameters come from Live's own curated banks:
+the device's "Best of" bank first, then its named banks, each split into pages of three.
+Paging shows the bank name and page number (for example `Best of  2/3`); otherwise the LCD
+shows the three parameter names, abbreviated. Devices Live has no banks for fall back to
+their parameters in order.

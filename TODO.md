@@ -57,4 +57,7 @@
       listeners, fader setpoint echo).
 - [x] FLIP (swap fader with the left encoder's parameter) and 2-finger strip shuttle. Confirmed in Live 12.4.
 - [x] AUTO WRITE LED = automation arm, READ LED = no overridden automation; SHIFT+AUTO re-enables. Confirmed in Live 12.4.
-- [ ] Device mode: follow Live's blue-hand "selected device" more closely; parameter banks of 3 feel small.
+- [x] FLIP confirmed in Live 12.4 (all five checks: baseline, LED and motor, swapped controls, send/device modes, unflip).
+- [x] Device mode: blue-hand appointment and Live's curated banks (Best of + named banks, pages of three,
+      parameter names on the LCD, SHIFT+PLUG-IN pages back). Confirmed in Live 12.4. The hand only shows
+      once the script declares `can_lock_to_devices()` and calls `update_locks()`.
