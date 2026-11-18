@@ -91,18 +91,6 @@ struct MainWindow: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
-                RowDivider()
-                Row {
-                    VStack(alignment: .leading, spacing: 3) {
-                        HStack {
-                            Text("Idle display")
-                            Spacer()
-                            Toggle("", isOn: $model.idleScreen).toggleStyle(.switch).labelsHidden()
-                        }
-                        Text("Animates the unit's display, and follows its controls, while no DAW is using it.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                }
                 if !model.isBundled {
                     RowDivider()
                     Row {

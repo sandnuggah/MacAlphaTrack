@@ -38,7 +38,7 @@
       Homebrew's sandbox, but a formula cannot put the app in /Applications (install and post-install
       are sandboxed; only casks can, and those need notarization). Distribution is the app binary,
       with a README note on allowing an unsigned app.
-- [x] First GitHub release: v0.1.0 published 2026-11-18 at github.com/sandnuggah/MacAlphaTrack, universal
+- [x] GitHub releases: v0.1.0 and v0.1.1 published 2026-11-18 at github.com/sandnuggah/MacAlphaTrack, universal
       zip built by `Scripts/make-release.sh` and uploaded with `gh` (run through Nix, not installed).
 - [x] Menu bar header: connection status dot in the first menu item.
 - [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
@@ -50,7 +50,7 @@
 - [x] Live script installer reads the User Library location from the newest Live's Library.cfg; a chosen folder still wins.
 - [x] Idle display: while no host uses the unit (LCD blank, LEDs off, no host output for 3 s) a block
       with a tail sweeps under the name (built-in characters 0xff, 0xdb, 0xa5), and touching a control shows it (fader level, knob and strip position,
-      button name with its LED). Any host output takes the display back. Switch in Settings.
+      button name with its LED). Any host output takes the display back. Always on (the Settings switch was removed in 0.1.1).
 
 ## Ableton Live script (`LiveRemoteScript/`)
 - [x] Tested inside Live 12.4 Suite: all mapped controls work; two bugs found and fixed (master track

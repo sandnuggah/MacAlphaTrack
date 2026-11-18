@@ -19,12 +19,6 @@ final class AppModel: ObservableObject {
         didSet { UserDefaults.standard.set(showMenuBarIcon, forKey: "showMenuBarIcon") }
     }
 
-    @Published var idleScreen: Bool {
-        didSet {
-            UserDefaults.standard.set(idleScreen, forKey: "idleScreen")
-            service.idleScreenEnabled = idleScreen
-        }
-    }
     private let service = DriverService(verbose: false, callbackQueue: .main)
     private let liveSource = LiveScriptInstaller.bundledSource()
 
@@ -42,7 +36,6 @@ final class AppModel: ObservableObject {
     init() {
         let defaults = UserDefaults.standard
         showMenuBarIcon = defaults.object(forKey: "showMenuBarIcon") as? Bool ?? true
-        idleScreen = defaults.object(forKey: "idleScreen") as? Bool ?? true
         let detected = LiveScriptInstaller.detectUserLibrary()
         if let chosen = defaults.string(forKey: "liveRemoteScriptsFolder") {
             liveFolder = URL(fileURLWithPath: chosen)
@@ -54,7 +47,6 @@ final class AppModel: ObservableObject {
             liveFolder = LiveScriptInstaller.defaultRemoteScriptsFolder
             liveFolderNote = "Live's default location (no Live preferences found)"
         }
-        service.idleScreenEnabled = idleScreen
         service.onStateChange = { [weak self] s in self?.state = s }
         service.onActivity = { [weak self] a in self?.activity = a }
         service.onLog = { [weak self] line in
