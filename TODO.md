@@ -29,8 +29,7 @@
 - [ ] Investigate publishing the source through Homebrew (a tap with a formula that builds from
       source, or a cask once there is a notarized release) so installs avoid Gatekeeper.
 - [x] Menu bar header: connection status dot in the first menu item.
-- [ ] Remove the macalphatrack:// URL scheme and the snapshot debug hook (CFBundleURLTypes in
-      make-app.sh, AppDelegate.application(_:open:), WindowSnapshot) once no longer needed for testing.
+- [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
 - [x] Run without a menu bar icon: "Show menu bar icon" switch in Settings (also Cmd-drag the icon off
       the bar); opening the app again shows Settings; a manual launch with the icon hidden shows
       Settings, a login launch stays silent.

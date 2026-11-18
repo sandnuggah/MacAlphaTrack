@@ -78,11 +78,8 @@ final class AppModel: ObservableObject {
         let appMenu = NSApp.mainMenu?.items.first?.submenu
         if let item = appMenu?.items.first(where: { $0.keyEquivalent == "," && $0.keyEquivalentModifierMask == .command }),
            let action = item.action {
-            NSLog("MacAlphaTrack: opening window via menu item '%@' (%@)", item.title, NSStringFromSelector(action))
             NSApp.sendAction(action, to: item.target, from: item)
         } else {
-            NSLog("MacAlphaTrack: no Settings menu item found in %@; using selector",
-                  (appMenu?.items.map { "\($0.title):\($0.action.map(NSStringFromSelector) ?? "-")" } ?? []).joined(separator: ", "))
             NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         }
     }

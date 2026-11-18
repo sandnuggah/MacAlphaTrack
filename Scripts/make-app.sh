@@ -58,11 +58,6 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
   <key>NSHumanReadableCopyright</key><string>MacAlphaTrack contributors</string>
-  <key>CFBundleURLTypes</key>
-  <array><dict>
-    <key>CFBundleURLName</key><string>com.macalphatrack.MacAlphaTrack</string>
-    <key>CFBundleURLSchemes</key><array><string>macalphatrack</string></array>
-  </dict></array>
 </dict></plist>
 PLIST
 echo -n "APPL????" > "$APP/Contents/PkgInfo"

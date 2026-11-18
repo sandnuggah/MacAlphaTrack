@@ -48,9 +48,6 @@ struct RowDivider: View {
 /// Paints the hosting NSWindow's title bar with the window colour. Applied when the
 /// helper view actually joins a window, not on a timer.
 struct WindowStyler: NSViewRepresentable {
-    /// The main window, once it exists (used by the snapshot debug hook).
-    static weak var mainWindow: NSWindow?
-
     final class StylerView: NSView {
         private var observation: NSKeyValueObservation?
         private var observedWindow: NSWindow?
@@ -59,7 +56,6 @@ struct WindowStyler: NSViewRepresentable {
             super.viewDidMoveToWindow()
             guard let window, window !== observedWindow else { return }
             observedWindow = window
-            WindowStyler.mainWindow = window
             apply(window)
             // SwiftUI and AppKit flip titlebarAppearsTransparent back to false after the
             // window is configured (and again under the current design). Pin it with KVO.
@@ -81,39 +77,4 @@ struct WindowStyler: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSView { StylerView() }
     func updateNSView(_ nsView: NSView, context: Context) {}
-}
-
-/// Debug aid: render a window (frame and title bar included) to a PNG file.
-/// Triggered by `open "macalphatrack://main?snapshot=/path/to/file.png"`.
-enum WindowSnapshot {
-    static func write(_ window: NSWindow, to path: String) {
-        guard let frame = window.contentView?.superview,
-              let rep = frame.bitmapImageRepForCachingDisplay(in: frame.bounds) else { return }
-        frame.cacheDisplay(in: frame.bounds, to: rep)
-        guard let data = rep.representation(using: .png, properties: [:]) else { return }
-        try? data.write(to: URL(fileURLWithPath: path))
-        try? describe(window).write(toFile: path + ".txt", atomically: true, encoding: .utf8)
-    }
-
-    static func describe(_ w: NSWindow) -> String {
-        func btn(_ k: NSWindow.ButtonType) -> String {
-            guard let b = w.standardWindowButton(k) else { return "nil" }
-            return "hidden=\(b.isHidden) alpha=\(b.alphaValue) frame=\(b.frame) superHidden=\(b.superview?.isHidden ?? false)"
-        }
-        var lines = [
-            "title=\(w.title) titleVisibility=\(w.titleVisibility.rawValue) transparent=\(w.titlebarAppearsTransparent)",
-            "styleMask=\(w.styleMask.rawValue) fullSizeContent=\(w.styleMask.contains(.fullSizeContentView)) titled=\(w.styleMask.contains(.titled))",
-            "toolbar=\(String(describing: w.toolbar)) toolbarStyle=\(w.toolbarStyle.rawValue)",
-            "frame=\(w.frame) contentFrame=\(w.contentView?.frame ?? .zero) contentLayoutRect=\(w.contentLayoutRect)",
-            "backgroundColor=\(String(describing: w.backgroundColor)) appearance=\(w.appearance?.name.rawValue ?? "nil")",
-            "close: " + btn(.closeButton), "mini: " + btn(.miniaturizeButton), "zoom: " + btn(.zoomButton),
-        ]
-        func dump(_ v: NSView, _ depth: Int) {
-            guard depth < 4 else { return }
-            lines.append(String(repeating: "  ", count: depth) + "\(type(of: v)) frame=\(v.frame) hidden=\(v.isHidden)")
-            for sub in v.subviews { dump(sub, depth + 1) }
-        }
-        if let frame = w.contentView?.superview { dump(frame, 0) }
-        return lines.joined(separator: "\n")
-    }
 }
