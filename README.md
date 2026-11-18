@@ -93,7 +93,7 @@ Also `install-live`, `fader-probe`, `descriptors`, `info`.
   12-byte interrupt report every 8 ms and accepts 8-byte commands. The protocol was
   reconstructed from the old Linux staging driver and then verified and completed on
   hardware (fader motor command, LED ids, touch strip). Everything known is written up in
-  [docs/PROTOCOL.md](docs/PROTOCOL.md); the original Native Mode manual is in `docs/` too.
+  [docs/PROTOCOL.md](docs/PROTOCOL.md); the MIDI layer comes from Frontier's Native Mode manual (see Acknowledgements).
 - **Translation.** `AlphaTrackKit` is pure Swift: it decodes reports, turns them into the
   Native-mode MIDI messages from Frontier's manual, and turns incoming MIDI into USB
   commands, keeping a shadow of LEDs, LCD and fader so state can be restored after a
@@ -118,7 +118,7 @@ Also `install-live`, `fader-probe`, `descriptors`, `info`.
 - `LiveRemoteScript/` – Ableton Live Control Surface script, a mock of Live's API, and its tests.
 - `Design/icons/` – app icon package, menu bar glyph, concept sketches.
 - `Scripts/make-app.sh` – builds and signs `MacAlphaTrack.app`.
-- `docs/` – protocol notes and the extracted Frontier manual.
+- `docs/` – protocol reference.
 - `TODO.md` – open items.
 
 ## Building and testing
@@ -136,13 +136,13 @@ files; the classic one is dependable.
 
 ## Licence
 
-Released into the public domain under the [Unlicense](LICENSE). This covers the project's
-own code and documents; `docs/alphatrack-native-mode-manual.txt` is extracted from
-Frontier Design Group's manual and remains theirs.
+Released into the public domain under the [Unlicense](LICENSE).
 
 ## Acknowledgements
 
-- Frontier Design Group's *AlphaTrack Native Mode MIDI Interface Description*, rev 1.0.
+- Frontier Design Group's *AlphaTrack Native Mode MIDI Interface Description*, rev 1.0
+  (2006-12-21), the manual that shipped with the original driver. It is Frontier's document
+  and is not included here; `docs/PROTOCOL.md` restates the facts the driver relies on.
 - David Täht's Linux staging driver and Ardour code for the TranzPort and AlphaTrack,
   the only public record of the raw USB protocol.
 - Ableton's bundled TranzPort script, the model for the Live Control Surface script.

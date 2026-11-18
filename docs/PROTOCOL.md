@@ -8,7 +8,8 @@ real unit on 2026-11-15 unless marked otherwise. Two layers:
    and Täht's Ardour surface code (github.com/harryhaaren/Alphatrack-Linux-Kernel-module);
    the gaps (fader motor, strip, LED map, device behaviour) were filled by probing.
 2. **Native-mode MIDI**: what Frontier's driver exposed to DAWs, documented in
-   `alphatrack-native-mode-manual.txt` (rev 1.0, 2006-12-21). MacAlphaTrack's virtual
+   Frontier's *AlphaTrack Native Mode MIDI Interface Description* (rev 1.0, 2006-12-21; not
+   included in this repository). MacAlphaTrack's virtual
    CoreMIDI ports speak exactly this.
 
 The Swift source of truth is `Sources/AlphaTrackKit` (`USBProtocol.swift`,
