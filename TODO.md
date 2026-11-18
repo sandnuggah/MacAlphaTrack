@@ -31,8 +31,15 @@
 - [x] Menu bar header: connection status dot in the first menu item.
 - [ ] Remove the macalphatrack:// URL scheme and the snapshot debug hook (CFBundleURLTypes in
       make-app.sh, AppDelegate.application(_:open:), WindowSnapshot) once no longer needed for testing.
-- [ ] Investigate running without a menu bar icon at all (e.g. a preference to hide it, with the
-      settings window reachable via `open -a MacAlphaTrack` / macalphatrack://main, or a LaunchAgent).
+- [ ] Run without a menu bar icon. Investigated 2026-11-18, feasible and small:
+      1. "Show menu bar icon" switch in Settings (default on) bound to NSStatusItem.isVisible; also set
+         behavior = .removalAllowed so Cmd-dragging the icon off the bar works, and observe isVisible
+         to keep the preference in sync.
+      2. applicationShouldHandleReopen: launching the app again while it runs opens Settings, which is
+         the way back when the icon is hidden (works for LSUIElement apps). Caption under the switch says so.
+      3. Login launch stays silent (no icon, no window); the driver runs as today.
+      A separate LaunchAgent running the CLI (SMAppService.agent) would remove the app process entirely
+      but needs IPC for status; not worth it. Once (2) exists the URL scheme is no longer needed.
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
       new files tripping the dependency scanner). Everything uses `--build-system native` now.
 - [x] Live script installer reads the User Library location from the newest Live's Library.cfg; a chosen folder still wins.
