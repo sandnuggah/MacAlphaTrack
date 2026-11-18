@@ -25,6 +25,8 @@
       and the Live script do, or the fader springs back on release. No suppression needed.
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [x] Moved to the protocol-based CoreMIDI API (MIDIEventList, MIDI 1.0 UMP); UMP codec in AlphaTrackKit.
+- [x] Menu bar app (AppKit status item + SwiftUI settings window), `Scripts/make-app.sh` builds the bundle.
+- [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
 - [ ] Publish through Homebrew. Investigated 2026-11-18:
       - Route: own tap (repo `homebrew-<name>`) with a formula that builds from source. Locally built
