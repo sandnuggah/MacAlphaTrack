@@ -30,6 +30,25 @@ public final class DriverService {
     private var bridge: MIDIBridge?
     private var translator = ReportTranslator()
     private var deviceState = DeviceState()
+
+    /// Guards `deviceState` and the idle-screen fields, which the MIDI thread and the USB
+    /// read thread both use.
+    private let stateLock = NSLock()
+    private var idle = IdleScreen()
+    private var idleEnabled = true
+    /// What the idle screen has put on the LCD and LEDs; nil while a host owns the display.
+    private var idleShown: [UInt8]? = nil
+    private var idleLights: Set<AlphaTrackUSB.Light> = []
+    private var lastHostOutput = Date.distantPast
+    /// A host is considered gone when it has left the unit blank and quiet for this long.
+    private static let idleDelay: TimeInterval = 3
+
+    /// Show the idle screen (sweep and control playground) while no host is using the
+    /// unit. On by default.
+    public var idleScreenEnabled: Bool {
+        get { stateLock.withLock { idleEnabled } }
+        set { write(stateLock.withLock { idleEnabled = newValue; return newValue ? [] : endIdle() }) }
+    }
     private let writeQueue = DispatchQueue(label: "macalphatrack.usb-out")
     private var device: AlphaTrackDevice? // only touched on writeQueue
     private var thread: Thread?
@@ -120,8 +139,13 @@ public final class DriverService {
                 let out = translator.feed(report)
                 if out.cameOnline {
                     log("device online; restoring LEDs, LCD and fader")
-                    write(deviceState.restoreCommands())
+                    write(stateLock.withLock {
+                        idleShown = nil
+                        idleLights = []
+                        return deviceState.restoreCommands()
+                    })
                 }
+                write(stateLock.withLock { idleCommands(for: report) })
                 for m in out.midi {
                     if verbose { log("MIDI out: \(hexString(m))") }
                     bridge?.send(m)
@@ -138,10 +162,60 @@ public final class DriverService {
         if verbose { log("MIDI in:  \(hexString(message))") }
         activity.midiIn += 1
         publishActivity()
-        let result = deviceState.apply(midi: message)
+        let (handBack, result) = stateLock.withLock { () -> ([[UInt8]], DeviceState.Result) in
+            // Restore from the state as it was before this message, then apply the message.
+            let before = deviceState
+            let result = deviceState.apply(midi: message)
+            guard !result.usbCommands.isEmpty else { return ([], result) }
+            lastHostOutput = Date()
+            return (endIdle(restoring: before), result)
+        }
         if let reply = result.midiReply { bridge?.send(reply) }
         if let why = result.unsupported { log("ignoring \(hexString(message)): \(why)") }
-        write(result.usbCommands)
+        write(handBack + result.usbCommands)
+    }
+
+    // MARK: - idle screen (call with stateLock held)
+
+    private var hostLeftUnitBlank: Bool {
+        deviceState.lights.isEmpty && deviceState.lcd.allSatisfy { $0 == 0x20 }
+    }
+
+    /// Commands that draw the next idle frame, or hand the display back if a host is active.
+    private func idleCommands(for report: InputReport) -> [[UInt8]] {
+        let now = Date()
+        guard idleEnabled, hostLeftUnitBlank,
+              now.timeIntervalSince(lastHostOutput) > DriverService.idleDelay else { return endIdle() }
+        if idleShown == nil {
+            idle = IdleScreen()
+            log("no host is using the unit; showing the idle display")
+        }
+        let frame = idle.feed(report, at: now.timeIntervalSinceReferenceDate)
+        var cmds: [[UInt8]] = []
+        let shown = idleShown ?? deviceState.lcd
+        let width = AlphaTrackUSB.lcdCellWidth
+        for cell in 0..<AlphaTrackUSB.lcdCells {
+            let range = cell * width..<(cell + 1) * width
+            if frame.lcd[range] != shown[range] {
+                cmds.append(AlphaTrackUSB.lcdCellCommand(cell: cell, chars: Array(frame.lcd[range])))
+            }
+        }
+        idleShown = frame.lcd
+        for light in frame.lights.symmetricDifference(idleLights) {
+            cmds.append(AlphaTrackUSB.lightCommand(light, on: frame.lights.contains(light)))
+        }
+        idleLights = frame.lights
+        if let pos = frame.faderSetpoint { cmds.append(AlphaTrackUSB.faderCommand(position: pos)) }
+        return cmds
+    }
+
+    /// Stop the idle screen and return the commands that put the host's own state back.
+    private func endIdle(restoring state: DeviceState? = nil) -> [[UInt8]] {
+        guard idleShown != nil else { return [] }
+        idleShown = nil
+        log("idle display off; display handed back")
+        idleLights = []
+        return (state ?? deviceState).restoreCommands()
     }
 
     private func write(_ commands: [[UInt8]]) {

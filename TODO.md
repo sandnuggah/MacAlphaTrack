@@ -57,6 +57,9 @@
 - [x] Flaky debug builds were the default swiftbuild build system (objects dropped from the link,
       new files tripping the dependency scanner). Everything uses `--build-system native` now.
 - [x] Live script installer reads the User Library location from the newest Live's Library.cfg; a chosen folder still wins.
+- [x] Idle display: while no host uses the unit (LCD blank, LEDs off, no host output for 3 s) a block
+      with a tail sweeps under the name (built-in characters 0xff, 0xdb, 0xa5), and touching a control shows it (fader level, knob and strip position,
+      button name with its LED). Any host output takes the display back. Switch in Settings.
 
 ## Ableton Live script (`LiveRemoteScript/`)
 - [x] Tested inside Live 12.4 Suite: all mapped controls work; two bugs found and fixed (master track

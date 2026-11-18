@@ -109,7 +109,14 @@ A host must therefore echo every hand-moved position straight back as the new se
 REAPER's surface and the bundled Live script both do. Commanding the fader while it is
 touched does not fight the hand.
 
-LCD: the character set is the display's own; printable ASCII renders as expected. Codes
+LCD: printable ASCII renders as expected. Codes 0xa0-0xff are the usual Japanese character
+ROM of HD44780-type displays (photographed 2026-11-18, `Scripts/lcd-charset.sh`): 0xa1-0xdf
+half-width katakana and punctuation, 0xe0-0xff Greek letters and symbols. Useful shapes:
+0xff solid block, 0xdb hollow box, 0xa5 centred dot, 0xa1 small circle, 0xb0 long dash,
+0xdf degree sign. Codes 0x80-0x9f are blank. These codes are only reachable over
+raw USB: the Native-mode LCD SysEx carries 7-bit data, so a MIDI host cannot send them.
+
+Codes
 0x00-0x07 are eight custom glyphs in the 5×8 cell (verified 2026-11-18). Each has the
 middle pixel row lit across the whole cell and a full-height vertical bar:
 

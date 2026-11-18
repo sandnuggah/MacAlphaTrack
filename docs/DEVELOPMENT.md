@@ -57,6 +57,12 @@ Only one process can hold the unit, so quit the app before using the command-lin
   commands, keeping a shadow of LEDs, LCD and fader so state can be restored after a
   reconnect. Capacitive touch is filtered with hysteresis because the sensors react to a
   hovering hand. All of this is unit-tested with bytes captured from the real unit.
+- **Idle display.** `IdleScreen` in `AlphaTrackKit` renders what the unit shows while no
+  host is using it: a block with a tail sweeping under the name, and a view of whichever control is being
+  touched. The driver draws it when the host's own state is blank (LCD empty, LEDs off) and
+  the host has sent nothing that changes the unit for three seconds. It never enters the
+  saved state, and the first host message that changes the unit restores that state. While
+  idle the driver echoes hand moves of the fader as the setpoint, since no host is there to.
 - **CoreMIDI.** `AlphaTrackDriver` opens the device with IOUSBHost, creates the virtual
   source and destination with stable unique ids, and runs the bridging loop. The app and
   the CLI both use it.
