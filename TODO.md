@@ -32,8 +32,8 @@
         it does not take GUI apps); a cask needs a signed + notarized build (unsigned casks are being
         disabled, and `--no-quarantine` is gone).
       - Prerequisites, none done yet: public Git remote, a version tag (LICENSE done: Unlicense) (formula points at
-        the tag tarball + sha256). Frontier's manual text has been removed from the tree
-        (it is still in the git history until that is rewritten).
+        the tag tarball + sha256). Frontier's manual text has been removed from the tree and
+        purged from the git history.
       - Formula sketch: depends_on xcode (actool/Icon Composer need full Xcode) and macos >= 13;
         `swift build --disable-sandbox --build-system native -c release`; run Scripts/make-app.sh
         (make it take the version from an env var, no git in a tarball); install bin/macalphatrack and
