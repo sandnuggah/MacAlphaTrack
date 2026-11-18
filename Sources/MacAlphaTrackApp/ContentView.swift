@@ -72,16 +72,6 @@ struct MainWindow: View {
                 RowDivider()
                 Row {
                     HStack {
-                        Text("MIDI activity")
-                        Spacer()
-                        Text("\(model.activity.midiIn) in · \(model.activity.midiOut) out")
-                            .foregroundStyle(.secondary)
-                            .help("MIDI messages received from and sent to the DAW since launch")
-                    }
-                }
-                RowDivider()
-                Row {
-                    HStack {
                         Text("Launch at login")
                         Spacer()
                         Toggle("", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
@@ -147,6 +137,16 @@ struct MainWindow: View {
             }
 
             SectionCard(title: "Log") {
+                Row {
+                    HStack {
+                        Text("MIDI activity")
+                        Spacer()
+                        Text("\(model.activity.midiIn) in · \(model.activity.midiOut) out")
+                            .foregroundStyle(.secondary)
+                            .help("MIDI messages received from and sent to the DAW since launch")
+                    }
+                }
+                RowDivider()
                 Row { LogPane() }
             }
         }
