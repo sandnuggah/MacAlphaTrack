@@ -3,7 +3,7 @@ import QuartzCore
 import Combine
 import AlphaTrackDriver
 
-/// The menu bar item and its menu: a header row (name and status) followed
+/// The menu bar item and its menu: a status row (text and dot) followed
 /// by ordinary menu items, in the style of Tailscale's menu.
 final class StatusItemController: NSObject {
     private let model: AppModel
@@ -61,8 +61,7 @@ final class StatusItemController: NSObject {
 
     private func refresh() {
         if statusItem.isVisible != model.showMenuBarIcon { statusItem.isVisible = model.showMenuBarIcon }
-        header.titleLabel.stringValue = "MacAlphaTrack"
-        header.subtitleLabel.stringValue = model.statusText
+        header.statusLabel.stringValue = model.statusText
         let color: NSColor
         switch model.state {
         case .connected: color = .systemGreen
@@ -77,36 +76,33 @@ final class StatusItemController: NSObject {
     @objc private func quit() { model.quit() }
 }
 
-/// Title and subtitle, laid out like a two-line menu header.
+/// The first menu row: the connection status in the menu's own font, with a status dot
+/// centred over the shortcut column. Sized like an ordinary menu item.
 final class HeaderView: NSView {
-    let titleLabel = NSTextField(labelWithString: "")
-    let subtitleLabel = NSTextField(labelWithString: "")
+    let statusLabel = NSTextField(labelWithString: "")
     /// Connection status: green connected, orange waiting, grey stopped.
     let dot = NSView()
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 34))
-        titleLabel.font = .menuFont(ofSize: 0)           // same size as the menu items (13 pt)
-        subtitleLabel.font = .systemFont(ofSize: 11)      // small secondary line, like Tailscale's
-        subtitleLabel.textColor = .secondaryLabelColor
+        super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 24))
+        statusLabel.font = .menuFont(ofSize: 0)
+        statusLabel.textColor = .labelColor
         dot.wantsLayer = true
         dot.layer?.cornerRadius = 4
-        for v in [titleLabel, subtitleLabel, dot] as [NSView] {
+        for v in [statusLabel, dot] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
         NSLayoutConstraint.activate([
-            titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            statusLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 15),
+            statusLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            statusLabel.trailingAnchor.constraint(lessThanOrEqualTo: dot.leadingAnchor, constant: -8),
             dot.centerXAnchor.constraint(equalTo: trailingAnchor, constant: -30),  // centre of the shortcut column
             dot.centerYAnchor.constraint(equalTo: centerYAnchor),
             dot.widthAnchor.constraint(equalToConstant: 8),
             dot.heightAnchor.constraint(equalToConstant: 8),
-            subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
-            subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 0),
-            subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: dot.leadingAnchor, constant: -8),
             widthAnchor.constraint(greaterThanOrEqualToConstant: 300),
-            heightAnchor.constraint(equalToConstant: 34),
+            heightAnchor.constraint(equalToConstant: 24),
         ])
     }
 
