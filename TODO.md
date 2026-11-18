@@ -26,8 +26,21 @@
 - [x] Run at login: the app registers itself as a login item (SMAppService).
 - [x] Moved to the protocol-based CoreMIDI API (MIDIEventList, MIDI 1.0 UMP); UMP codec in AlphaTrackKit.
 - [ ] Developer ID signing + notarization for distribution.
-- [ ] Investigate publishing the source through Homebrew (a tap with a formula that builds from
-      source, or a cask once there is a notarized release) so installs avoid Gatekeeper.
+- [ ] Publish through Homebrew. Investigated 2026-11-18:
+      - Route: own tap (repo `homebrew-<name>`) with a formula that builds from source. Locally built
+        apps are not quarantined, so no Gatekeeper prompt. homebrew-core is out (notability rules, and
+        it does not take GUI apps); a cask needs a signed + notarized build (unsigned casks are being
+        disabled, and `--no-quarantine` is gone).
+      - Prerequisites, none done yet: public Git remote, a LICENSE, a version tag (formula points at
+        the tag tarball + sha256). Decide whether to ship docs/alphatrack-native-mode-manual.txt
+        (Frontier's copyrighted text) or link to it instead.
+      - Formula sketch: depends_on xcode (actool/Icon Composer need full Xcode) and macos >= 13;
+        `swift build --disable-sandbox --build-system native -c release`; run Scripts/make-app.sh
+        (make it take the version from an env var, no git in a tarball); install bin/macalphatrack and
+        prefix/MacAlphaTrack.app; caveats telling the user to open or copy the app; optional
+        `service do` block so `brew services start macalphatrack` runs the headless driver.
+      - To check when doing it: build inside Homebrew's sandbox, CoreMIDI ports from a brew service,
+        and that "Launch at login" survives upgrades (the Cellar path changes per version).
 - [x] Menu bar header: connection status dot in the first menu item.
 - [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
 - [x] Run without a menu bar icon: "Show menu bar icon" switch in Settings (also Cmd-drag the icon off
