@@ -14,6 +14,10 @@ final class AppModel: ObservableObject {
     /// Where the current Live folder came from, for the UI.
     @Published var liveFolderNote: String = ""
     @Published var launchAtLogin = false
+    /// Whether the menu bar icon is shown. When hidden, opening the app again shows Settings.
+    @Published var showMenuBarIcon: Bool {
+        didSet { UserDefaults.standard.set(showMenuBarIcon, forKey: "showMenuBarIcon") }
+    }
 
     private let service = DriverService(verbose: false, callbackQueue: .main)
     private let liveSource = LiveScriptInstaller.bundledSource()
@@ -31,6 +35,7 @@ final class AppModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
+        showMenuBarIcon = defaults.object(forKey: "showMenuBarIcon") as? Bool ?? true
         let detected = LiveScriptInstaller.detectUserLibrary()
         if let chosen = defaults.string(forKey: "liveRemoteScriptsFolder") {
             liveFolder = URL(fileURLWithPath: chosen)

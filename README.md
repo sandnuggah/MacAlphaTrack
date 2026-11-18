@@ -42,6 +42,9 @@ script, on macOS 27 with an M4 MacBook Air.
    control surface in Native mode, as you would with the original driver. Start
    MacAlphaTrack before the DAW so the ports exist.
 
+The menu bar icon can be hidden in Settings; with it hidden, open MacAlphaTrack again
+(Finder, Spotlight) to get the settings window back.
+
 The driver runs for as long as the app does. Only one process can hold the unit, so quit
 the app before using the command-line tools below.
 

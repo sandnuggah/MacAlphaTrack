@@ -79,6 +79,18 @@ struct MainWindow: View {
                             .disabled(!model.isBundled)
                     }
                 }
+                RowDivider()
+                Row {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack {
+                            Text("Show menu bar icon")
+                            Spacer()
+                            Toggle("", isOn: $model.showMenuBarIcon).toggleStyle(.switch).labelsHidden()
+                        }
+                        Text("When hidden, open MacAlphaTrack again to show this window.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 if !model.isBundled {
                     RowDivider()
                     Row {

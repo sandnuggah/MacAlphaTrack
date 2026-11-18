@@ -11,11 +11,22 @@ final class StatusItemController: NSObject {
     private let menu = NSMenu()
     private let header = HeaderView()
     private var subscription: AnyCancellable?
+    private var visibilityObservation: NSKeyValueObservation?
 
     init(model: AppModel) {
         self.model = model
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
+
+        // The icon can be hidden from Settings or by Cmd-dragging it off the menu bar.
+        statusItem.behavior = .removalAllowed
+        statusItem.isVisible = model.showMenuBarIcon
+        visibilityObservation = statusItem.observe(\.isVisible, options: [.new]) { [weak self] item, _ in
+            DispatchQueue.main.async {
+                guard let self, self.model.showMenuBarIcon != item.isVisible else { return }
+                self.model.showMenuBarIcon = item.isVisible
+            }
+        }
 
         if let button = statusItem.button {
             // Fixed template glyph regardless of device state: the bundled fader icon,
@@ -49,6 +60,7 @@ final class StatusItemController: NSObject {
     }
 
     private func refresh() {
+        if statusItem.isVisible != model.showMenuBarIcon { statusItem.isVisible = model.showMenuBarIcon }
         header.titleLabel.stringValue = "MacAlphaTrack"
         header.subtitleLabel.stringValue = model.statusText
         let color: NSColor
