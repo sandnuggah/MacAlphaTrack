@@ -72,3 +72,4 @@ MODE_NAMES = ("Pan", "Send", "Device")
 
 ENCODER_STEPS = 64.0  # ticks for a full parameter sweep
 STRIP_BEATS_PER_STEP = 1.0
+SHUTTLE_BEATS_PER_TICK = 0.5  # per strip step of offset, per display tick (~10 Hz)

@@ -296,6 +296,61 @@ class AlphaTrackScriptTests(unittest.TestCase):
         self.assertIs(self.song.view.selected_scene, self.song.scenes[2])
         self.release(STRIP_TOUCH_1)
 
+    def test_flip_swaps_fader_and_left_encoder(self):
+        mixer = self.song.tracks[0].mixer_device
+        del self.sent[:]
+        self.tap(FLIP)
+        self.assertTrue(led(self.sent, FLIP))
+        # fader jumps to the pan position (centre)
+        self.assertIn((PITCHBEND_STATUS, 0x00, 0x40), self.sent)
+        self.script.receive_midi((PITCHBEND_STATUS, 0x70, 0x7F))  # fader to top -> pan hard right
+        self.assertAlmostEqual(mixer.panning.value, 1.0)
+        vol = mixer.volume.value
+        self.script.receive_midi((CC_STATUS, 0x10, 0x48))  # left encoder -8 -> volume down
+        self.assertAlmostEqual(mixer.volume.value, vol - 8 / 64.0)
+        # in device mode the fader follows a parameter that has no listener (polled)
+        self.tap(PLUGIN)
+        params = self.song.tracks[0].devices[0].parameters
+        params[1].value = 0.0
+        del self.sent[:]
+        self.tick()
+        self.assertIn((PITCHBEND_STATUS, 0x00, 0x00), self.sent)
+        # unflip: fader returns to the volume
+        self.tap(FLIP)
+        self.assertFalse(led(self.sent, FLIP))
+        self.script.receive_midi((PITCHBEND_STATUS, 0x00, 0x40))
+        self.assertAlmostEqual(mixer.volume.value, 512 / 1023.0)
+
+    def test_two_finger_strip_shuttles(self):
+        self.song.current_song_time = 100.0
+        self.press(STRIP_TOUCH_2)
+        self.script.receive_midi((STRIP_STATUS, 0, 10 << 2))   # origin: zero speed
+        self.tick()
+        self.assertEqual(self.song.current_song_time, 100.0)
+        self.script.receive_midi((STRIP_STATUS, 0, 14 << 2))   # 4 steps right
+        self.tick(2)
+        self.assertEqual(self.song.current_song_time, 104.0)
+        self.script.receive_midi((STRIP_STATUS, 0, 8 << 2))    # 2 steps left of origin
+        self.tick()
+        self.assertEqual(self.song.current_song_time, 103.0)
+        self.release(STRIP_TOUCH_2)
+        self.tick(3)
+        self.assertEqual(self.song.current_song_time, 103.0)
+
+    def test_automation_leds_and_re_enable(self):
+        self.assertTrue(led(self.sent, AUTO_READ_LED))
+        self.assertFalse(led(self.sent, AUTO_WRITE_LED))
+        self.tap(AUTO)
+        self.assertTrue(led(self.sent, AUTO_WRITE_LED))
+        self.song.re_enable_automation_enabled = True      # user overrode an automated parameter
+        self.assertFalse(led(self.sent, AUTO_READ_LED))
+        self.press(SHIFT)
+        self.tap(AUTO)
+        self.release(SHIFT)
+        self.assertFalse(self.song.re_enable_automation_enabled)
+        self.assertTrue(led(self.sent, AUTO_READ_LED))
+        self.assertTrue(self.song.session_automation_record)  # SHIFT+AUTO did not toggle arm
+
     def test_lcd_only_resent_on_change(self):
         self.tick(3)
         n = len(self.sent)

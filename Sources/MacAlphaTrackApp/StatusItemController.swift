@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 import Combine
 import AlphaTrackDriver
 
@@ -50,6 +51,14 @@ final class StatusItemController: NSObject {
     private func refresh() {
         header.titleLabel.stringValue = "MacAlphaTrack"
         header.subtitleLabel.stringValue = model.statusText
+        let color: NSColor
+        switch model.state {
+        case .connected: color = .systemGreen
+        case .waitingForDevice: color = .systemOrange
+        case .stopped: color = .systemGray
+        }
+        header.dot.layer?.backgroundColor = color.cgColor
+        header.pulsing = model.state == .waitingForDevice
     }
 
     @objc private func openSettings() { model.showMainWindow() }
@@ -60,26 +69,60 @@ final class StatusItemController: NSObject {
 final class HeaderView: NSView {
     let titleLabel = NSTextField(labelWithString: "")
     let subtitleLabel = NSTextField(labelWithString: "")
+    /// Connection status: green connected, orange waiting, grey stopped.
+    let dot = NSView()
 
     init() {
         super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 34))
         titleLabel.font = .menuFont(ofSize: 0)           // same size as the menu items (13 pt)
         subtitleLabel.font = .systemFont(ofSize: 11)      // small secondary line, like Tailscale's
         subtitleLabel.textColor = .secondaryLabelColor
-        for v in [titleLabel, subtitleLabel] {
+        dot.wantsLayer = true
+        dot.layer?.cornerRadius = 4
+        for v in [titleLabel, subtitleLabel, dot] as [NSView] {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
         NSLayoutConstraint.activate([
             titleLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
             titleLabel.topAnchor.constraint(equalTo: topAnchor, constant: 3),
+            dot.centerXAnchor.constraint(equalTo: trailingAnchor, constant: -30),  // centre of the shortcut column
+            dot.centerYAnchor.constraint(equalTo: centerYAnchor),
+            dot.widthAnchor.constraint(equalToConstant: 8),
+            dot.heightAnchor.constraint(equalToConstant: 8),
             subtitleLabel.leadingAnchor.constraint(equalTo: titleLabel.leadingAnchor),
             subtitleLabel.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 0),
-            subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -14),
+            subtitleLabel.trailingAnchor.constraint(lessThanOrEqualTo: dot.leadingAnchor, constant: -8),
             widthAnchor.constraint(greaterThanOrEqualToConstant: 300),
             heightAnchor.constraint(equalToConstant: 34),
         ])
     }
 
     required init?(coder: NSCoder) { fatalError() }
+
+    /// Fade the dot in and out, as a "waiting" cue.
+    var pulsing = false {
+        didSet { if pulsing != oldValue { updatePulse() } }
+    }
+
+    // Layer animations are dropped when the view leaves its window (the menu closing),
+    // so re-apply each time the menu opens.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updatePulse()
+    }
+
+    private func updatePulse() {
+        guard let layer = dot.layer else { return }
+        layer.removeAnimation(forKey: "pulse")
+        guard pulsing, window != nil else { return }
+        let fade = CABasicAnimation(keyPath: "opacity")
+        fade.fromValue = 1.0
+        fade.toValue = 0.25
+        fade.duration = 0.9
+        fade.autoreverses = true
+        fade.repeatCount = .infinity
+        fade.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        layer.add(fade, forKey: "pulse")
+    }
 }

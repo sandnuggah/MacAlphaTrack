@@ -30,17 +30,20 @@ Control Surface **AlphaTrack**, Input **AlphaTrack**, Output **AlphaTrack**.
 | TRACK L / R | previous / next track, returns, master (LEDs show direction available) | |
 | REC / MUTE / SOLO | arm / mute / solo selected track (LEDs; ANY SOLO LED) | |
 | Fader | selected track volume; motor follows Live, and hand moves are echoed back so the fader holds its position | |
+| FLIP | swap fader and left encoder: the fader takes the left encoder's parameter (pan, first send, first device parameter) and the left encoder takes volume (LED) | |
 | PAN | encoder mode: L = pan, M = volume; push L = centre pan | |
 | SEND | encoder mode: sends A B C; press again for next 3; push = send off | |
 | PLUG-IN / EQ | encoder mode: 3 parameters of selected device; PLUG-IN again = next 3 | |
 | Encoders | turn = change, LCD shows name and value briefly | fine steps |
-| AUTO | automation arm on/off (LED) | |
+| AUTO | automation arm on/off (AUTO and WRITE LEDs) | re-enable automation |
+| READ LED | lit while all automation plays back; dark when a parameter has been overridden | |
 | F1 | undo | redo |
 | F2 | toggle Session / Arranger (LED = Session) | |
 | F3 | fire highlighted clip slot (Session) / selected scene | fire selected scene |
 | F4 | metronome on/off (LED) | |
-| Touch strip | scrub arrangement (1 beat per step) / scroll scenes in Session | |
+| Touch strip, 1 finger | scrub arrangement (1 beat per step) / scroll scenes in Session | |
+| Touch strip, 2 fingers | shuttle: first touch is zero speed, sliding right or left sets forward or backward speed | |
 | Footswitch | play / stop | |
 | LCD | line 1 track name; line 2 mode info | position and tempo |
 
-Not mapped yet: FLIP, 2-finger strip shuttle, AUTO READ/WRITE LEDs.
+Not mapped: EQ has no mode of its own (it selects device mode).

@@ -138,7 +138,7 @@ class SongView(Observable):
 
 
 class Song(Observable):
-    _observed = ("record_mode", "loop", "metronome", "session_automation_record", "tracks", "tempo", "is_playing")
+    _observed = ("record_mode", "loop", "metronome", "session_automation_record", "re_enable_automation_enabled", "tracks", "tempo", "is_playing")
 
     def __init__(self, tracks, returns=1):
         Observable.__init__(self)
@@ -156,6 +156,7 @@ class Song(Observable):
         self.current_song_time = 0.0
         self.can_undo = True
         self.can_redo = False
+        self.re_enable_automation_enabled = False  # True once automation has been overridden
         self.undone = 0
         self.redone = 0
         self.continued = 0
@@ -173,6 +174,9 @@ class Song(Observable):
 
     def undo(self):
         self.undone += 1
+
+    def re_enable_automation(self):
+        self.re_enable_automation_enabled = False
 
     def redo(self):
         self.redone += 1

@@ -28,7 +28,7 @@
 - [ ] Developer ID signing + notarization for distribution.
 - [ ] Investigate publishing the source through Homebrew (a tap with a formula that builds from
       source, or a cask once there is a notarized release) so installs avoid Gatekeeper.
-- [ ] Menu bar header: add a connection status indicator (coloured dot) to the first menu item.
+- [x] Menu bar header: connection status dot in the first menu item.
 - [ ] Remove the macalphatrack:// URL scheme and the snapshot debug hook (CFBundleURLTypes in
       make-app.sh, AppDelegate.application(_:open:), WindowSnapshot) once no longer needed for testing.
 - [ ] Investigate running without a menu bar icon at all (e.g. a preference to hide it, with the
@@ -40,6 +40,6 @@
 ## Ableton Live script (`LiveRemoteScript/`)
 - [x] Tested inside Live 12.4 Suite: all mapped controls work; two bugs found and fixed (master track
       listeners, fader setpoint echo).
-- [ ] Map FLIP (swap fader with encoder parameter) and 2-finger strip shuttle.
-- [ ] Drive AUTO READ/WRITE LEDs from the selected track's automation state.
+- [x] FLIP (swap fader with the left encoder's parameter) and 2-finger strip shuttle. Needs a pass in Live.
+- [x] AUTO WRITE LED = automation arm, READ LED = no overridden automation; SHIFT+AUTO re-enables. Needs a pass in Live.
 - [ ] Device mode: follow Live's blue-hand "selected device" more closely; parameter banks of 3 feel small.

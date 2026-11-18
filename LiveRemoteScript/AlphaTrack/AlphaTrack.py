@@ -51,6 +51,10 @@ class AlphaTrack(object):
         self._ffwd_held = False
         self._spool = 1.0
         self._strip_pos = None
+        self._strip_fingers = 0
+        self._shuttle_origin = None
+        self._shuttle_speed = 0
+        self._flip = False
         self._last_lines = (None, None)
         self._pending_lines = ("", "")
         self._param_hint = None  # (text, ticks_to_live)
@@ -130,11 +134,14 @@ class AlphaTrack(object):
             (song, "loop", self._update_loop_led),
             (song, "metronome", self._update_f4_led),
             (song, "session_automation_record", self._update_auto_led),
+            (song, "re_enable_automation_enabled", self._update_auto_led),
             (song, "tracks", self._on_tracks_changed),
             (song, "tempo", self._request_line2),
             (song.view, "selected_scene", self._request_line2),
         )
         for obj, name, cb in pairs:
+            if not hasattr(obj, "add_%s_listener" % name):
+                continue
             getattr(obj, "add_%s_listener" % name)(cb)
             self._song_listeners.append((obj, name, cb))
         self._listen_all_solos()
@@ -232,6 +239,7 @@ class AlphaTrack(object):
         self._update_mode_leds()
         self._update_track_leds()
         self._led(SHIFT, self._shift)
+        self._led(FLIP, self._flip)
         self._last_fader_sent = None
         self._send_fader_position()
         self._pending_lines = (None, None)
@@ -246,7 +254,14 @@ class AlphaTrack(object):
         self._led(LOOP, self.song().loop)
 
     def _update_auto_led(self):
-        self._led(AUTO, self.song().session_automation_record)
+        """AUTO and WRITE show automation arm; READ is lit while Live is playing back all
+        automation, and goes dark when some automated parameter has been overridden
+        (Live's "Re-Enable Automation" button lights up). SHIFT+AUTO re-enables it."""
+        song = self.song()
+        armed = bool(song.session_automation_record)
+        self._led(AUTO, armed)
+        self._led(AUTO_WRITE_LED, armed)
+        self._led(AUTO_READ_LED, not getattr(song, "re_enable_automation_enabled", False))
 
     def _update_f4_led(self):
         self._led(F4, self.song().metronome)
@@ -287,9 +302,11 @@ class AlphaTrack(object):
         last position it was sent, so while the user moves it by hand Live's new value
         must be echoed straight back (as Frontier's and REAPER's drivers do); otherwise
         the fader springs back to the stale setpoint when the hand lets go."""
-        if self._track is None or not self._track.has_audio_output:
+        param = self._fader_param()
+        if param is None:
             return
-        msg = _fraction_to_fader(self._track.mixer_device.volume.value)
+        span = param.max - param.min
+        msg = _fraction_to_fader((param.value - param.min) / span if span else 0.0)
         if force or msg != self._last_fader_sent:
             self._last_fader_sent = msg
             self.send_midi(msg)
@@ -301,6 +318,10 @@ class AlphaTrack(object):
         if self._rew_held or self._ffwd_held:
             self._spool = min(self._spool + 0.25, 8.0)
             self.song().jump_by((1 if self._ffwd_held else -1) * self._spool)
+        if self._shuttle_speed:
+            self.song().jump_by(self._shuttle_speed * SHUTTLE_BEATS_PER_TICK)
+        # Parameters without a value listener (device parameters under FLIP) are polled.
+        self._send_fader_position()
         if self._param_hint is not None:
             text, ttl = self._param_hint
             self._param_hint = (text, ttl - 1) if ttl > 1 else None
@@ -395,8 +416,12 @@ class AlphaTrack(object):
                 self._send_fader_position(force=True)
             return
         if note in (STRIP_TOUCH_1, STRIP_TOUCH_2):
-            if not down:
+            fingers = 1 if note == STRIP_TOUCH_1 else 2
+            if down or self._strip_fingers == fingers:
+                self._strip_fingers = fingers if down else 0
                 self._strip_pos = None
+                self._shuttle_origin = None
+                self._shuttle_speed = 0
             return
         if note in ENC_TOUCH:
             return
@@ -445,6 +470,7 @@ class AlphaTrack(object):
                 self._send_page += 1
                 if self._send_page * 3 >= len(self._all_sends()):
                     self._send_page = 0
+                self._send_fader_position()
                 self._request_line2()
             else:
                 self._set_mode(MODE_SEND)
@@ -454,7 +480,11 @@ class AlphaTrack(object):
             else:
                 self._set_mode(MODE_DEVICE)
         elif note == AUTO:
-            song.session_automation_record = not song.session_automation_record
+            if self._shift:
+                if hasattr(song, "re_enable_automation"):
+                    song.re_enable_automation()
+            else:
+                song.session_automation_record = not song.session_automation_record
         elif note == F1:
             if self._shift:
                 if song.can_redo:
@@ -473,7 +503,10 @@ class AlphaTrack(object):
         elif note in ENC_PUSH:
             self._on_encoder_push(ENC_PUSH.index(note))
         elif note == FLIP:
-            pass  # not mapped yet
+            self._flip = not self._flip
+            self._led(FLIP, self._flip)
+            self._send_fader_position()
+            self._request_line2()
 
     def _on_spool(self, forward, down):
         if down:
@@ -488,12 +521,14 @@ class AlphaTrack(object):
         self._mode = mode
         self._param_hint = None
         self._update_mode_leds()
+        self._send_fader_position()
         self._request_line2()
 
     def _page_device(self, direction):
         params = self._device_params()
         pages = max(1, (len(params) + 2) // 3)
         self._device_page = (self._device_page + direction) % pages
+        self._send_fader_position()
         self._request_line2()
 
     def _fire(self):
@@ -509,11 +544,13 @@ class AlphaTrack(object):
             song.view.selected_scene.fire_as_selected()
 
     def _on_fader(self, fraction):
-        t = self._track
-        if t is None or not t.has_audio_output:
+        param = self._fader_param()
+        if param is None:
             return
-        vol = t.mixer_device.volume
-        vol.value = _clamp(fraction, vol.min, vol.max)  # the value listener echoes it back
+        param.value = _clamp(param.min + fraction * (param.max - param.min), param.min, param.max)
+        self._send_fader_position()  # echo the new setpoint (a no-op if a listener already did)
+        if self._flip:
+            self._show_param(param.name, str(param))
 
     def _on_encoder(self, index, ticks):
         if ticks == 0:
@@ -547,6 +584,12 @@ class AlphaTrack(object):
         param.value = _clamp(param.value + ticks * step, param.min, param.max)
 
     def _on_strip(self, position):
+        if self._strip_fingers == 2:
+            # Shuttle: the first two-finger position is zero speed; offset sets the speed.
+            if self._shuttle_origin is None:
+                self._shuttle_origin = position
+            self._shuttle_speed = position - self._shuttle_origin
+            return
         if self._strip_pos is None:
             self._strip_pos = position
             return
@@ -602,7 +645,23 @@ class AlphaTrack(object):
             return []
         return list(device.parameters)[1:]  # parameter 0 is Device On
 
+    def _volume_param(self):
+        t = self._track
+        if t is None or not t.has_audio_output:
+            return None
+        return t.mixer_device.volume
+
+    def _fader_param(self):
+        """What the fader controls: track volume, or under FLIP the left encoder's parameter."""
+        return self._mode_param(0) if self._flip else self._volume_param()
+
     def _encoder_param(self, index):
+        """What an encoder controls; under FLIP the left encoder takes over the volume."""
+        if self._flip and index == 0:
+            return self._volume_param()
+        return self._mode_param(index)
+
+    def _mode_param(self, index):
         t = self._track
         if t is None:
             return None
