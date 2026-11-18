@@ -38,8 +38,8 @@
       Homebrew's sandbox, but a formula cannot put the app in /Applications (install and post-install
       are sandboxed; only casks can, and those need notarization). Distribution is the app binary,
       with a README note on allowing an unsigned app.
-- [ ] First GitHub release (0.1.0): zip built by `Scripts/make-release.sh`; needs the public repository
-      (github.com/sandnuggah/MacAlphaTrack), a `v0.1.0` tag and the release with the zip attached.
+- [x] First GitHub release: v0.1.0 published 2026-11-18 at github.com/sandnuggah/MacAlphaTrack, universal
+      zip built by `Scripts/make-release.sh` and uploaded with `gh` (run through Nix, not installed).
 - [x] Menu bar header: connection status dot in the first menu item.
 - [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
 - [x] Run without a menu bar icon: "Show menu bar icon" switch in Settings (also Cmd-drag the icon off
