@@ -73,7 +73,10 @@ Notes:
   **not** reported, and after a reset they read 0 until the fader is touched.
 - The capacitive touch sensors react to proximity. With a hand anywhere over the unit,
   neighbouring touch bits oscillate (~120-200 ms on, ~40-120 ms off) while a real touch
-  holds for 500 ms or more. The manual's calibration (hold SHIFT+STOP, press F4) does not
+  holds for 500 ms or more. This only happens with the Mac on battery: measured on
+  2026-11-18 with a hovering hand, the three encoder touch bits gave 39 false touches in
+  20 s on battery (typically ~190 ms, longest 1.2 s) and none on mains power; the fader and
+  strip sensors stayed quiet either way. The manual's calibration (hold SHIFT+STOP, press F4) does not
   change this. MacAlphaTrack asserts a touch after ~210 ms continuously on and releases
   after ~260 ms continuously off, and asserts fader touch immediately when the fader moves.
 - Local functions handled by the unit itself: hold SHIFT+STOP and turn the left knob for
@@ -106,15 +109,25 @@ A host must therefore echo every hand-moved position straight back as the new se
 REAPER's surface and the bundled Live script both do. Commanding the fader while it is
 touched does not fight the hand.
 
-LCD: the character set is the display's own; printable ASCII renders as expected. Eight
-custom glyphs (0x00-0x07) exist for bargraphs: Ardour used 0x07 for a full block and 0x03
-for a left half block. The glyph table is on page 8 of the original PDF manual.
+LCD: the character set is the display's own; printable ASCII renders as expected. Codes
+0x00-0x07 are eight custom glyphs in the 5×8 cell (verified 2026-11-18). Each has the
+middle pixel row lit across the whole cell and a full-height vertical bar:
+
+```
+code   bar                         code   bar
+0x00   right 4 columns             0x04   left 1 column
+0x01   right 3 columns             0x05   left 2 columns
+0x02   right 2 columns             0x06   left 3 columns
+0x03   right 1 column              0x07   left 4 columns
+```
+
+They read as a horizontal bargraph or pan indicator: 0x04…0x07 fill a cell from its left
+edge, 0x00…0x03 from its right edge. None is a completely full cell. (Täht's Ardour code
+treated 0x07 as a full block and 0x03 as a left half block; on this unit neither is exact.)
 
 ### Open points
 
 - Footswitch bit (presumably 7). Needs a footswitch.
-- Whether the touch oscillation is a grounding effect (ungrounded laptop supply).
-- The exact rendering of the eight custom LCD glyphs.
 
 ## 2. Native-mode MIDI
 

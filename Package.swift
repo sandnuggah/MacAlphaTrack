@@ -6,7 +6,7 @@ let package = Package(
     platforms: [.macOS(.v13)],
     products: [
         .executable(name: "macalphatrack", targets: ["macalphatrack"]),
-        .executable(name: "MacAlphaTrack", targets: ["MacAlphaTrackApp"]),
+        .executable(name: "MacAlphaTrackApp", targets: ["MacAlphaTrackApp"]),
         .library(name: "AlphaTrackKit", targets: ["AlphaTrackKit"]),
         .library(name: "AlphaTrackDriver", targets: ["AlphaTrackDriver"]),
     ],

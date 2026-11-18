@@ -5,14 +5,19 @@
       with a hand over the unit, neighbouring touch bits oscillate (~150 ms on / ~80 ms off)
       while real touches hold >500 ms. Driver now uses assert/release hysteresis
       (~210 ms / ~260 ms) and asserts fader touch immediately on fader movement.
-- [ ] Check whether the oscillation is a grounding issue (laptop on battery vs mains / powered hub).
-      If mains power fixes it, the hysteresis can be shortened.
+- [x] Grounding test 2026-11-18 (`Scripts/touch-noise.sh`, hand hovering 20 s): on battery the three
+      encoder touch bits flicker (39 false touches, typically ~190 ms, longest 1.2 s); on mains
+      (15 W charger) none. Fader and strip sensors silent either way. So the oscillation is a
+      floating-supply effect. Hysteresis kept as is: the driver cannot tell how the Mac is powered,
+      and on battery the longest false touches still exceed the ~210 ms assert time.
 - [x] Verify which physical LED each light id 0...22 drives (all 21 match; 7 and 8 drive nothing).
 - [ ] Footswitch bit (presumably bit 7) – needs a footswitch plugged in.
 - [x] Fader motor output command: `00 02 pp qq`. Byte 3 (2 LSBs) assumed, not visually verifiable.
-- [ ] Fader feedback: the device does not report motor-driven positions. Decide whether the
-      daemon should echo the commanded position back as MIDI (most DAWs don't need it).
-- [ ] LCD custom characters 0x00...0x07 (bargraph glyphs) – check what each renders.
+- [x] Fader feedback: the device does not report motor-driven positions. Decided 2026-11-18 not to
+      echo the commanded position back as MIDI: hosts track it themselves, and an echo could be
+      taken for a hand move.
+- [x] LCD custom characters 0x00...0x07: bars with a centre tick, 4..1 columns from the right (0-3)
+      and 1..4 columns from the left (4-7). Photographed 2026-11-18; table in docs/PROTOCOL.md.
 - [x] Device occasionally re-enumerates itself (seen 3x on 2026-11-15, cause unknown).
       Both `dump` and the driver reopen it and restore state.
 
