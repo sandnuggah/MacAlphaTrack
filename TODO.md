@@ -31,7 +31,7 @@
         apps are not quarantined, so no Gatekeeper prompt. homebrew-core is out (notability rules, and
         it does not take GUI apps); a cask needs a signed + notarized build (unsigned casks are being
         disabled, and `--no-quarantine` is gone).
-      - Prerequisites, none done yet: public Git remote, a LICENSE, a version tag (formula points at
+      - Prerequisites, none done yet: public Git remote, a version tag (LICENSE done: Unlicense) (formula points at
         the tag tarball + sha256). Decide whether to ship docs/alphatrack-native-mode-manual.txt
         (Frontier's copyrighted text) or link to it instead.
       - Formula sketch: depends_on xcode (actool/Icon Composer need full Xcode) and macos >= 13;

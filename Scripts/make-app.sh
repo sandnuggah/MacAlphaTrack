@@ -57,7 +57,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>
-  <key>NSHumanReadableCopyright</key><string>MacAlphaTrack contributors</string>
+  <key>NSHumanReadableCopyright</key><string>Public domain (Unlicense)</string>
 </dict></plist>
 PLIST
 echo -n "APPL????" > "$APP/Contents/PkgInfo"

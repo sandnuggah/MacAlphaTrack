@@ -134,6 +134,12 @@ Requires macOS 13 or later and Xcode (Icon Composer and `actool` come with it). 
 toolchains intermittently drops object files from the link and fails on newly added
 files; the classic one is dependable.
 
+## Licence
+
+Released into the public domain under the [Unlicense](LICENSE). This covers the project's
+own code and documents; `docs/alphatrack-native-mode-manual.txt` is extracted from
+Frontier Design Group's manual and remains theirs.
+
 ## Acknowledgements
 
 - Frontier Design Group's *AlphaTrack Native Mode MIDI Interface Description*, rev 1.0.
