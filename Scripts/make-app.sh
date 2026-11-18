@@ -1,33 +1,46 @@
 #!/bin/sh
 # Build MacAlphaTrack.app from the SwiftPM products.
 # usage: Scripts/make-app.sh [debug|release]   (default release) -> build/MacAlphaTrack.app
-# Environment (used by the Homebrew formula, which builds from a tarball without git):
-#   MACALPHATRACK_VERSION  version to stamp; default: git describe, else 0.0.0
-#   SWIFT_BUILD_FLAGS      extra flags for swift build, e.g. --disable-sandbox
+# Environment:
+#   MACALPHATRACK_VERSION  version to stamp, e.g. 0.1.0; default: git describe, else 0.0.0
+#   SWIFT_BUILD_FLAGS      extra flags for swift build
+#   UNIVERSAL=1            build for Apple Silicon and Intel (default: this Mac's architecture)
 set -e
 CONFIG="${1:-release}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 # The default (swiftbuild) build system intermittently drops objects from the link and
 # trips on new files; the classic one is dependable.
-# shellcheck disable=SC2086
-swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" --product MacAlphaTrackApp
-BIN="$(swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" --show-bin-path)/MacAlphaTrackApp"
-APP="$ROOT/build/MacAlphaTrack.app"
-VERSION="${MACALPHATRACK_VERSION:-$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed 's/^v//')}"
-VERSION="${VERSION:-0.0.0}"
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 MIN_OS="13.0"
-
-rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/LiveRemoteScript/AlphaTrack"
-cp "$BIN" "$APP/Contents/MacOS/MacAlphaTrack"
+# Build one architecture and print the path of its binary. An empty triple means native.
+build_arch() {
+  # shellcheck disable=SC2086
+  swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" ${1:+--triple "$1"} --product MacAlphaTrackApp >&2
+  # shellcheck disable=SC2086
+  echo "$(swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" ${1:+--triple "$1"} --show-bin-path)/MacAlphaTrackApp"
+}
 # SwiftPM links against the current SDK but records the deployment target as the SDK
 # version in LC_BUILD_VERSION. AppKit decides whether an app gets the current design
 # (Liquid Glass window chrome, new window controls) from that recorded SDK version, so
 # stamp the real one or the app runs in pre-macOS-26 compatibility mode.
-xcrun vtool -set-build-version macos "$MIN_OS" "$SDK_VERSION" -replace \
-  -output "$APP/Contents/MacOS/MacAlphaTrack" "$APP/Contents/MacOS/MacAlphaTrack"
+stamp() { xcrun vtool -set-build-version macos "$MIN_OS" "$SDK_VERSION" -replace -output "$2" "$1"; }
+STAGE="$(mktemp -d -t macalphatrack-build)"
+if [ "${UNIVERSAL:-0}" = 1 ]; then
+  stamp "$(build_arch arm64-apple-macosx$MIN_OS)" "$STAGE/arm64"
+  stamp "$(build_arch x86_64-apple-macosx$MIN_OS)" "$STAGE/x86_64"
+  lipo -create "$STAGE/arm64" "$STAGE/x86_64" -output "$STAGE/MacAlphaTrack"
+else
+  stamp "$(build_arch "")" "$STAGE/MacAlphaTrack"
+fi
+APP="$ROOT/build/MacAlphaTrack.app"
+VERSION="${MACALPHATRACK_VERSION:-$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed 's/^v//')}"
+VERSION="${VERSION:-0.0.0}"
+
+rm -rf "$APP"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/LiveRemoteScript/AlphaTrack"
+cp "$STAGE/MacAlphaTrack" "$APP/Contents/MacOS/MacAlphaTrack"
+rm -rf "$STAGE"
 cp "$ROOT"/LiveRemoteScript/AlphaTrack/*.py "$APP/Contents/Resources/LiveRemoteScript/AlphaTrack/"
 
 # App icon: compile the Icon Composer package (layered Liquid Glass icon) into Assets.car,
@@ -67,4 +80,4 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 PLIST
 echo -n "APPL????" > "$APP/Contents/PkgInfo"
 codesign --force --deep --sign - "$APP"
-echo "built $APP ($VERSION, $CONFIG, SDK $SDK_VERSION): $(xcrun vtool -show-build "$APP/Contents/MacOS/MacAlphaTrack" | grep -E 'sdk' | xargs)"
+echo "built $APP ($VERSION, $CONFIG, SDK $SDK_VERSION, $(lipo -archs "$APP/Contents/MacOS/MacAlphaTrack"))"

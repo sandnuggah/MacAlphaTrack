@@ -45,8 +45,7 @@ public struct LiveScriptInstaller {
         if let res = bundle.resourceURL?.appendingPathComponent(relative), isScriptFolder(res) {
             return res
         }
-        // Resolve symlinks first: a Homebrew install is reached through /opt/homebrew/bin,
-        // and the script sits next to the real binary's prefix.
+        // Resolve symlinks first, so the tool also finds the script when run through a link.
         var dir = (bundle.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0]))
             .resolvingSymlinksInPath().deletingLastPathComponent()
         for _ in 0..<8 {

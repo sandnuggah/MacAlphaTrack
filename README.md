@@ -7,13 +7,17 @@ replaces Frontier's discontinued driver, and adds a control surface for Ableton 
 
 ## Install
 
-Requires macOS 13 or later and Xcode.
+Requires macOS 13 or later.
 
-```sh
-Scripts/make-app.sh
-```
+1. Download the [latest release](https://github.com/sandnuggah/MacAlphaTrack/releases/latest),
+   unzip it, and move `MacAlphaTrack.app` to Applications.
+2. Open it. The app is not signed with an Apple developer certificate, so macOS blocks the
+   first launch. Go to System Settings › Privacy & Security, scroll to the message about
+   MacAlphaTrack, and click **Open Anyway**. This is needed once.
+3. Plug in the AlphaTrack.
 
-Move `build/MacAlphaTrack.app` to Applications, open it, and plug in the AlphaTrack.
+To build it yourself instead, with Xcode installed, run `Scripts/make-app.sh`. A copy you
+built opens without the extra step.
 
 ## Set up your DAW
 

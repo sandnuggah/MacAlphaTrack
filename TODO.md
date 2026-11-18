@@ -34,14 +34,12 @@
 - [x] Menu bar app (AppKit status item + SwiftUI settings window), `Scripts/make-app.sh` builds the bundle.
 - [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
-- [ ] Publish through Homebrew. Route: own tap with a formula that builds from source (no quarantine,
-      so no notarization needed; homebrew-core and casks are out). Steps in docs/RELEASING.md.
-      - [x] Formula written, in the separate tap repository `~/Code/homebrew-MacAlphaTrack` (not yet
-            on GitHub): CLI, app, Live script, `brew services`.
-      - [x] Build works from a tarball (version and swift flags from the environment).
-      - [x] Built, tested and audited in Homebrew's sandbox from a local tarball (2026-11-18).
-      - [ ] Public Git remote. - [ ] Version tag. - [ ] Fill in owner and sha256, publish the tap.
-      - [ ] Check after publishing: CoreMIDI ports from `brew services`, upgrade behaviour.
+- [x] Homebrew: dropped 2026-11-18. A formula that builds from source was written and verified in
+      Homebrew's sandbox, but a formula cannot put the app in /Applications (install and post-install
+      are sandboxed; only casks can, and those need notarization). Distribution is the app binary,
+      with a README note on allowing an unsigned app.
+- [ ] First GitHub release (0.1.0): zip built by `Scripts/make-release.sh`; needs the public repository
+      (github.com/sandnuggah/MacAlphaTrack), a `v0.1.0` tag and the release with the zip attached.
 - [x] Menu bar header: connection status dot in the first menu item.
 - [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
 - [x] Run without a menu bar icon: "Show menu bar icon" switch in Settings (also Cmd-drag the icon off
