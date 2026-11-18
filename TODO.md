@@ -34,21 +34,14 @@
 - [x] Menu bar app (AppKit status item + SwiftUI settings window), `Scripts/make-app.sh` builds the bundle.
 - [x] Custom icons: fader app icon as an Icon Composer package compiled by actool; menu bar template glyph.
 - [ ] Developer ID signing + notarization for distribution.
-- [ ] Publish through Homebrew. Investigated 2026-11-18:
-      - Route: own tap (repo `homebrew-<name>`) with a formula that builds from source. Locally built
-        apps are not quarantined, so no Gatekeeper prompt. homebrew-core is out (notability rules, and
-        it does not take GUI apps); a cask needs a signed + notarized build (unsigned casks are being
-        disabled, and `--no-quarantine` is gone).
-      - Prerequisites, none done yet: public Git remote, a version tag (LICENSE done: Unlicense) (formula points at
-        the tag tarball + sha256). Frontier's manual text has been removed from the tree and
-        purged from the git history.
-      - Formula sketch: depends_on xcode (actool/Icon Composer need full Xcode) and macos >= 13;
-        `swift build --disable-sandbox --build-system native -c release`; run Scripts/make-app.sh
-        (make it take the version from an env var, no git in a tarball); install bin/macalphatrack and
-        prefix/MacAlphaTrack.app; caveats telling the user to open or copy the app; optional
-        `service do` block so `brew services start macalphatrack` runs the headless driver.
-      - To check when doing it: build inside Homebrew's sandbox, CoreMIDI ports from a brew service,
-        and that "Launch at login" survives upgrades (the Cellar path changes per version).
+- [ ] Publish through Homebrew. Route: own tap with a formula that builds from source (no quarantine,
+      so no notarization needed; homebrew-core and casks are out). Steps in docs/RELEASING.md.
+      - [x] Formula written, in the separate tap repository `~/Code/homebrew-MacAlphaTrack` (not yet
+            on GitHub): CLI, app, Live script, `brew services`.
+      - [x] Build works from a tarball (version and swift flags from the environment).
+      - [x] Built, tested and audited in Homebrew's sandbox from a local tarball (2026-11-18).
+      - [ ] Public Git remote. - [ ] Version tag. - [ ] Fill in owner and sha256, publish the tap.
+      - [ ] Check after publishing: CoreMIDI ports from `brew services`, upgrade behaviour.
 - [x] Menu bar header: connection status dot in the first menu item.
 - [x] Removed the macalphatrack:// URL scheme and the window snapshot debug hook; opening the app again shows Settings.
 - [x] Run without a menu bar icon: "Show menu bar icon" switch in Settings (also Cmd-drag the icon off

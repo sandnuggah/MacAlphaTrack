@@ -9,3 +9,5 @@ build/
 Design/icons/preview.png
 Design/icons/appicon-rendered.png
 Design/icons/menubar-preview.png
+__pycache__/
+*.pyc

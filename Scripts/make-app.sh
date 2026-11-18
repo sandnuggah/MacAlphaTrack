@@ -1,16 +1,21 @@
 #!/bin/sh
 # Build MacAlphaTrack.app from the SwiftPM products.
 # usage: Scripts/make-app.sh [debug|release]   (default release) -> build/MacAlphaTrack.app
+# Environment (used by the Homebrew formula, which builds from a tarball without git):
+#   MACALPHATRACK_VERSION  version to stamp; default: git describe, else 0.0.0
+#   SWIFT_BUILD_FLAGS      extra flags for swift build, e.g. --disable-sandbox
 set -e
 CONFIG="${1:-release}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 # The default (swiftbuild) build system intermittently drops objects from the link and
 # trips on new files; the classic one is dependable.
-swift build --build-system native -c "$CONFIG" --product MacAlphaTrackApp
-BIN="$(swift build --build-system native -c "$CONFIG" --show-bin-path)/MacAlphaTrackApp"
+# shellcheck disable=SC2086
+swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" --product MacAlphaTrackApp
+BIN="$(swift build $SWIFT_BUILD_FLAGS --build-system native -c "$CONFIG" --show-bin-path)/MacAlphaTrackApp"
 APP="$ROOT/build/MacAlphaTrack.app"
-VERSION="$(git -C "$ROOT" describe --tags --always 2>/dev/null || echo 0.1.0)"
+VERSION="${MACALPHATRACK_VERSION:-$(git -C "$ROOT" describe --tags --always 2>/dev/null | sed 's/^v//')}"
+VERSION="${VERSION:-0.0.0}"
 SDK_VERSION="$(xcrun --sdk macosx --show-sdk-version)"
 MIN_OS="13.0"
 

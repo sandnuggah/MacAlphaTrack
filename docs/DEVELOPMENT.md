@@ -87,7 +87,8 @@ Only one process can hold the unit, so quit the app before using the command-lin
 - `LiveRemoteScript/` – Ableton Live Control Surface script, a mock of Live's API, and its tests.
 - `Design/icons/` – app icon package, menu bar glyph, concept sketches.
 - `Scripts/make-app.sh` – builds and signs `MacAlphaTrack.app`.
-- `docs/` – protocol reference, these notes, README images.
+- `docs/` – protocol reference, these notes, release steps ([RELEASING.md](RELEASING.md); the
+  Homebrew formula is in the separate `homebrew-MacAlphaTrack` repository), README images.
 - `TODO.md` – open items.
 
 ## Acknowledgements
